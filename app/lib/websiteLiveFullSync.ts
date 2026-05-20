@@ -1,7 +1,6 @@
 import { lambdaFetchWebsiteLive } from '~/lib/lambdaApi';
 import { extractRelPathsFromLiveResponse, parseWebsiteLivePayload } from '~/lib/websiteLiveFiles';
 import { workbenchStore } from '~/lib/stores/workbench';
-import type { FileMap } from '~/lib/stores/files';
 
 async function parseLiveResponseBody(res: Response): Promise<{ data: unknown }> {
   const text = await res.text();
@@ -44,11 +43,11 @@ export async function runWebsiteLiveFullSync(
   const { data } = await parseLiveResponseBody(res);
   const parsed = parseWebsiteLivePayload(data);
 
-  // Accumulate everything into a single fileMap and do ONE ingest at the end.
-  // Per-file ingest cascades through every reactive subscriber (file tree,
-  // editor document map, chat file-activity feed) — for large manifests that
-  // O(N²) work pins the main thread and freezes the UI.
-  const aggregateFileMap: FileMap = { ...parsed.fileMap };
+  // Ingest the initial /live response's inline content first so the
+  // workbench gets at least one file as soon as the sync starts.
+  if (Object.keys(parsed.fileMap).length > 0) {
+    await workbenchStore.ingestWebsiteFiles(parsed.fileMap);
+  }
 
   const fromManifest = parsed.pendingS3Files.map((f) => f.path.trim()).filter(Boolean);
   if (fromManifest.length > 0) {
@@ -58,6 +57,10 @@ export async function runWebsiteLiveFullSync(
   const pathSet = new Set<string>([...manifestPaths, ...extractRelPathsFromLiveResponse(data)]);
   const paths = [...pathSet].filter(Boolean);
 
+  // Ingest each file individually as it arrives so the workbench tree fills
+  // in one row at a time. A yield to the event loop between ingests lets
+  // React paint each new file before the next fetch starts, which is the
+  // "files showing one-by-one" UX users expect during a sync.
   for (const relPath of paths) {
     options?.onPath?.(relPath);
 
@@ -66,19 +69,16 @@ export async function runWebsiteLiveFullSync(
       const { data: fdata } = await parseLiveResponseBody(fres);
       const fparsed = parseWebsiteLivePayload(fdata);
 
-      for (const [k, v] of Object.entries(fparsed.fileMap)) {
-        if (v) {
-          aggregateFileMap[k] = v;
-        }
+      if (Object.keys(fparsed.fileMap).length > 0) {
+        await workbenchStore.ingestWebsiteFiles(fparsed.fileMap);
+        // Yield to the event loop so the file tree / chat re-render between
+        // ingests rather than batching them all into one frame at the end.
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
     } catch (err) {
       // Skip individual file failures — keep syncing the rest.
       console.warn('runWebsiteLiveFullSync file fetch failed', relPath, err);
     }
-  }
-
-  if (Object.keys(aggregateFileMap).length > 0) {
-    await workbenchStore.ingestWebsiteFiles(aggregateFileMap);
   }
 
   workbenchStore.setDocuments(workbenchStore.files.get());

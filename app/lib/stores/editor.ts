@@ -32,28 +32,47 @@ export class EditorStore {
   setDocuments(files: FileMap) {
     const previousDocuments = this.documents.value;
 
-    this.documents.set(
-      Object.fromEntries<EditorDocument>(
-        Object.entries(files)
-          .map(([filePath, dirent]) => {
-            if (dirent === undefined || dirent.type === 'folder') {
-              return undefined;
-            }
+    // Incremental update: only touch entries that are actually new or whose
+    // content changed, and only drop entries whose backing file was removed.
+    // Re-cloning the entire map on every per-file ingest during a sync turns
+    // a sequence of N file additions into O(N²) work and triggers a full
+    // editor re-render per file.
+    const next: EditorDocuments = { ...previousDocuments };
+    let mutated = false;
 
-            const previousDocument = previousDocuments?.[filePath];
+    for (const [filePath, dirent] of Object.entries(files)) {
+      if (dirent === undefined || dirent.type === 'folder') {
+        if (filePath in next) {
+          delete next[filePath];
+          mutated = true;
+        }
+        continue;
+      }
 
-            return [
-              filePath,
-              {
-                value: dirent.content,
-                filePath,
-                scroll: previousDocument?.scroll,
-              },
-            ] as [string, EditorDocument];
-          })
-          .filter(Boolean) as Array<[string, EditorDocument]>,
-      ),
-    );
+      const previous = previousDocuments?.[filePath];
+      if (previous && previous.value === dirent.content) {
+        continue;
+      }
+
+      next[filePath] = {
+        value: dirent.content,
+        filePath,
+        scroll: previous?.scroll,
+      };
+      mutated = true;
+    }
+
+    // Drop documents whose file is no longer present in the file map.
+    for (const filePath of Object.keys(next)) {
+      if (!(filePath in files)) {
+        delete next[filePath];
+        mutated = true;
+      }
+    }
+
+    if (mutated) {
+      this.documents.set(next);
+    }
   }
 
   setSelectedFile(filePath: string | undefined) {

@@ -126,9 +126,11 @@ export const WorkbenchIDEView = memo(function WorkbenchIDEView({
 
   const [cursorPos] = useState('Ln 1, Col 1');
 
-  useEffect(() => {
-    workbenchStore.setDocuments(workbenchStore.files.get());
-  }, [files]);
+  // Note: `workbenchStore.ingestWebsiteFiles` already calls `setDocuments`
+  // whenever the file count changes, so a per-`files` useEffect here would
+  // re-build the editor's documents map (O(N)) on every reactive update —
+  // including the per-file ingests the sync now performs to populate the
+  // tree one row at a time. Skip it.
 
   const breadcrumb = useMemo(() => shortPath(currentDocument?.filePath), [currentDocument?.filePath]);
   const lang = useMemo(() => langFromPath(currentDocument?.filePath), [currentDocument?.filePath]);

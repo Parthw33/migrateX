@@ -10,6 +10,7 @@
 import { useEffect, useRef } from 'react';
 import { getSupabaseClient } from '~/lib/supabaseClient';
 import { websiteChat } from '~/lib/stores/websiteChat';
+import { requestWebsiteLiveFilesSync } from '~/lib/websiteGenerationSession';
 
 const POLL_MS = 3000;
 const MAX_POLLS = 200;
@@ -46,6 +47,12 @@ function isTerminalStatus(status: string): boolean {
 export function useWebsiteJobPoller(jobId: string | null) {
   const pollsRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fire a one-shot full sync the first time the backend signals it has
+  // moved past file generation (build attempt / deploying / deployed). The
+  // live poll's per-tick picker isn't aggressive enough to pull every file
+  // before the user sees the "Done" badge; the manual sync iterates the
+  // full manifest and is what actually populates the workbench tree.
+  const postGenerationSyncRef = useRef(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -54,6 +61,7 @@ export function useWebsiteJobPoller(jobId: string | null) {
     _lastMessage = '';
     _lastWebsiteUrl = '';
     pollsRef.current = 0;
+    postGenerationSyncRef.current = false;
 
     const sb = getSupabaseClient();
     if (!sb) {
@@ -125,6 +133,34 @@ export function useWebsiteJobPoller(jobId: string | null) {
       if (website_message && website_message !== _lastMessage) {
         _lastMessage = website_message;
         websiteChat.addAI(`📋 ${website_message}`);
+
+        // Backend has moved from file generation into the build phase
+        // (e.g. "Build attempt 1/3…", "Deploying…"). Files are written
+        // and available — request a one-shot full sync so the workbench
+        // tree gets populated. Fires once per session.
+        if (!postGenerationSyncRef.current) {
+          const ml = website_message.toLowerCase();
+          if (ml.includes('build attempt') || ml.includes('deploying')) {
+            postGenerationSyncRef.current = true;
+            requestWebsiteLiveFilesSync();
+          }
+        }
+      }
+
+      const statusLowerForSync = website_status.toLowerCase();
+      if (
+        !postGenerationSyncRef.current &&
+        (statusLowerForSync === 'building' ||
+          statusLowerForSync === 'built' ||
+          statusLowerForSync === 'deploying' ||
+          statusLowerForSync === 'deployed' ||
+          statusLowerForSync === 'success' ||
+          statusLowerForSync === 'complete' ||
+          statusLowerForSync === 'completed' ||
+          statusLowerForSync === 'done')
+      ) {
+        postGenerationSyncRef.current = true;
+        requestWebsiteLiveFilesSync();
       }
 
       // Emit when website_url appears for the first time
