@@ -227,6 +227,8 @@ export interface WorkbenchHeaderProps {
   onToggleTerminal: () => void;
   onSyncFiles: () => void;
   syncDisabled?: boolean;
+  onOpenStack?: () => void;
+  openStackDisabled?: boolean;
   onBuild: () => void;
   onBack: () => void;
   /** True while a file is fetched on-demand */
@@ -250,6 +252,8 @@ export const WorkbenchHeader = memo(function WorkbenchHeader({
   onToggleTerminal,
   onSyncFiles,
   syncDisabled,
+  onOpenStack,
+  openStackDisabled,
   onBuild,
   onBack,
   isFetchingFile,
@@ -324,6 +328,15 @@ export const WorkbenchHeader = memo(function WorkbenchHeader({
             disabled={syncDisabled}
             title="Pull latest files from the server"
           />
+          {onOpenStack && (
+            <ActionBtn
+              label="Open Stack"
+              icon="i-ph:stack"
+              onClick={onOpenStack}
+              disabled={openStackDisabled}
+              title="Open this job's Contentstack stack in a new tab"
+            />
+          )}
           <ActionBtn label="Build" icon="i-ph:play" primary onClick={onBuild} />
           {/* <ActionBtn label="Terminal" icon="i-ph:terminal" active={showTerminal} onClick={onToggleTerminal} /> */}
           <ThemeSwitch className="text-migratex-elements-textSecondary hover:text-migratex-elements-textPrimary" />

@@ -18,6 +18,10 @@ import { getScrapeJobId, setScrapeJobId } from '~/lib/scrapeJobSession';
 import { useWebsiteLiveGenerationPoll } from '~/lib/hooks/useWebsiteLiveGenerationPoll';
 import { useWebsiteJobPoller } from '~/lib/hooks/useWebsiteJobPoller';
 import { useGenerationChatBridge } from '~/lib/hooks/useGenerationChatBridge';
+import { buildContentstackStackDashboardUrl } from '~/lib/contentstackStackUrl';
+import { fetchScrapeJobDetail } from '~/lib/lambdaApi';
+import { fetchWebsiteCredentialsFromSupabaseJob } from '~/lib/jobsRowWebsiteCredentials';
+import { getDashboardJobContext } from '~/lib/dashboardJobContext';
 
 import { WorkbenchHeader } from '~/components/workbench/WorkbenchHeader';
 import { ChatPanel } from '~/components/generate-website/ChatPanel';
@@ -87,24 +91,17 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
   useWebsiteJobPoller(effectiveJobId);
   useGenerationChatBridge(generationStatus);
 
-  // Auto-sync files once the live poll has gathered enough state to know the
-  // job has progressed past the initial "just clicked Generate" moment.
-  //
-  // Firing a full sync immediately on mount races with the live poll and, on a
-  // freshly started job, kicks off a sequential fetch over a growing manifest
-  // (potentially 100+ files). Each individual ingest cascades through every
-  // reactive subscriber (file tree, editor docs, chat file-activity feed) and
-  // freezes the main thread. We instead wait until the live poll has either
-  // paused (deploying) or accumulated real progress / a populated manifest
-  // before kicking the manual full-sync.
+  // Auto-sync files only once the live poll has decided the job is in a
+  // terminal state — 'done' (already deployed / completed) or 'paused'
+  // (Contentstack Launch deploying). For mid-stream generations the live
+  // poll drives the file delivery; firing a parallel full-sync there would
+  // race with the poll and produce file-activity chat bubbles AFTER the
+  // "✅ All files loaded" success message.
   useEffect(() => {
     if (autoSyncRef.current || !appToken || !effectiveJobId) return;
 
     const ready =
-      generationStatus.phase === 'paused' ||
-      generationStatus.phase === 'done' ||
-      generationStatus.progress >= 30 ||
-      Object.keys(workbenchStore.files.get()).length > 0;
+      generationStatus.phase === 'paused' || generationStatus.phase === 'done';
 
     if (!ready) return;
 
@@ -112,9 +109,9 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
     const t = setTimeout(() => {
       requestWebsiteLiveFilesSync();
       toast.info('Syncing latest files…', { autoClose: 2500 });
-    }, 800);
+    }, 400);
     return () => clearTimeout(t);
-  }, [appToken, effectiveJobId, generationStatus.phase, generationStatus.progress]);
+  }, [appToken, effectiveJobId, generationStatus.phase]);
 
   // Open preview panel automatically when website_url appears
   useEffect(() => {
@@ -181,6 +178,55 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
     requestWebsiteLiveFilesSync();
   }, [appToken]);
 
+  const handleOpenStack = useCallback(async () => {
+    // Pull the stack api key from whichever source is freshest on this route:
+    // the active website-generation session is the most direct, but fall back
+    // through the dashboard context, the migration store, and finally the
+    // backend job row so the button works regardless of how the user got here.
+    const session = getWebsiteGenerationSession();
+    const dash = getDashboardJobContext();
+    const migration = migrationStore.get();
+
+    let stackKey =
+      session?.cs_stack_api_key?.trim() ||
+      dash?.cs_stack_api_key?.trim() ||
+      migration.stackUid?.trim() ||
+      migration.contentstackStackUid?.trim() ||
+      '';
+
+    const jobId = (routeJobId ?? getScrapeJobId() ?? '').trim();
+
+    if (!stackKey && jobId && appToken) {
+      try {
+        const result = await fetchScrapeJobDetail(appToken, jobId);
+        if (result.ok && result.data.cs_stack_api_key?.trim()) {
+          stackKey = result.data.cs_stack_api_key.trim();
+        }
+      } catch (err) {
+        console.warn('Open Stack: fetchScrapeJobDetail failed', err);
+      }
+    }
+
+    if (!stackKey && jobId) {
+      try {
+        const rowCreds = await fetchWebsiteCredentialsFromSupabaseJob(jobId);
+        if (rowCreds.ok && rowCreds.creds.stackApiKey.trim()) {
+          stackKey = rowCreds.creds.stackApiKey.trim();
+        }
+      } catch (err) {
+        console.warn('Open Stack: fetchWebsiteCredentialsFromSupabaseJob failed', err);
+      }
+    }
+
+    const url = buildContentstackStackDashboardUrl(stackKey);
+    if (!url) {
+      toast.error('No stack linked to this job yet. Select or configure a stack first.');
+      return;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [appToken, routeJobId]);
+
   const handleBuild = useCallback(() => toast.info('Build triggered'), []);
 
   const handleBack = useCallback(() => {
@@ -213,6 +259,7 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
         onToggleTerminal={handleToggleTerminal}
         onSyncFiles={handleSyncFiles}
         syncDisabled={!appToken || isSyncing}
+        onOpenStack={() => void handleOpenStack()}
         onBuild={handleBuild}
         onBack={handleBack}
         hasPreviewUrl={Boolean(websiteUrl)}

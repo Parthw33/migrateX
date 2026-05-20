@@ -222,7 +222,17 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
 
       try {
         const res = await lambdaFetchWebsiteLive(appToken, websiteJobId);
+        // Early bail-out: if the manual sync (or unmount) marked the poll
+        // stopped while this tick was mid-await, do NOT proceed to ingest
+        // anything. Otherwise a late ingest fires file-activity chat
+        // messages AFTER the "✅ All files loaded" success message.
+        if (cancelled || stopped) {
+          return;
+        }
         const { data } = await parseLiveResponse(res);
+        if (cancelled || stopped) {
+          return;
+        }
 
         const parsed = parseWebsiteLivePayload(data);
         const {
@@ -286,6 +296,9 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
         }));
 
         if (Object.keys(fileMap).length > 0) {
+          if (cancelled || stopped) {
+            return;
+          }
           await workbenchStore.ingestWebsiteFiles(fileMap);
         }
 
@@ -347,7 +360,13 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
             setStatus((prev) => ({ ...prev, currentFile: relPath, message: `Loading ${relPath}…` }));
 
             const fres = await lambdaFetchWebsiteLive(appToken, websiteJobId, { file: relPath });
+            if (cancelled || stopped) {
+              break;
+            }
             const { data: fdata } = await parseLiveResponse(fres);
+            if (cancelled || stopped) {
+              break;
+            }
             const fparsed = parseWebsiteLivePayload(fdata);
 
             if (Object.keys(fparsed.fileMap).length > 0) {
@@ -419,13 +438,36 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
           stopped = true;
           stopInterval();
           if (!failed) {
-            setStatus({ isLoading: false, progress: 100, message: 'Done!', phase: 'done', currentFile: '' });
+            // Only transition to 'done' if the workbench is actually populated.
+            // For a re-opened deployed job the first poll returns terminal=true
+            // with an empty workbench — emitting phase='done' here causes the
+            // chat bridge to add "✅ All files loaded successfully!" *before*
+            // any file has been ingested. Use 'paused' instead so the auto-sync
+            // still kicks in (it gates on paused/done) but the success message
+            // waits until the sync genuinely finishes loading every file.
+            const hasFiles = Object.keys(workbenchStore.files.get()).length > 0;
+            if (hasFiles) {
+              setStatus({ isLoading: false, progress: 100, message: 'Done!', phase: 'done', currentFile: '' });
+            } else {
+              setStatus({
+                isLoading: false,
+                progress: 100,
+                message: message || 'Generation finished — syncing files…',
+                phase: 'paused',
+                currentFile: '',
+              });
+            }
           }
         }
 
         if (terminal && !failed && !toastShownRef.current) {
-          toastShownRef.current = true;
-          toast.success('Website generation finished.');
+          // Hold the toast too — the sync will surface its own "Synced N
+          // paths" toast once the workbench is actually populated.
+          const hasFiles = Object.keys(workbenchStore.files.get()).length > 0;
+          if (hasFiles) {
+            toastShownRef.current = true;
+            toast.success('Website generation finished.');
+          }
         }
       } catch (e) {
         console.error('website/live poll', e);
@@ -461,6 +503,15 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
     const jobId = session.jobId;
 
     const runSync = async () => {
+      // Stop the live poll BEFORE the sync starts. If the poll keeps running
+      // in parallel, an in-flight tick can ingest files after the sync emits
+      // its success message — surfacing file-activity chat bubbles AFTER the
+      // "✅ All files loaded" message, which is exactly the inconsistency
+      // users reported when re-opening a deployed job from the Dashboard.
+      // The early-bail checks added in run() ensure any tick that's already
+      // mid-await exits without writing to the workbench.
+      pollStopperRef.current?.();
+
       setIsSyncing(true);
       setStatus((prev) => ({ ...prev, phase: 'syncing', message: 'Syncing files from API…' }));
 
