@@ -1,0 +1,18 @@
+@use './variables.scss';
+@use './z-index.scss';
+@use './animations.scss';
+@use './components/terminal.scss';
+@use './components/resize-handle.scss';
+@use './components/code.scss';
+@use './components/editor.scss';
+@use './components/toast.scss';
+@use './components/header-profile.scss';
+@use './components/workbench-ide.scss';
+@use './components/skeleton.scss';
+@use './components/bolt-chat.scss';
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}

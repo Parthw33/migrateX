@@ -1,0 +1,137 @@
+:root {
+  --cm-backgroundColor: var(--migratex-elements-editor-backgroundColor, var(--migratex-elements-bg-depth-1));
+  --cm-textColor: var(--migratex-elements-editor-textColor, var(--migratex-elements-textPrimary));
+
+  /* Gutter */
+
+  --cm-gutter-backgroundColor: var(--migratex-elements-editor-gutter-backgroundColor, var(--cm-backgroundColor));
+  --cm-gutter-textColor: var(--migratex-elements-editor-gutter-textColor, var(--migratex-elements-textSecondary));
+  --cm-gutter-activeLineTextColor: var(--migratex-elements-editor-gutter-activeLineTextColor, var(--cm-gutter-textColor));
+
+  /* Fold Gutter */
+
+  --cm-foldGutter-textColor: var(--migratex-elements-editor-foldGutter-textColor, var(--cm-gutter-textColor));
+  --cm-foldGutter-textColorHover: var(--migratex-elements-editor-foldGutter-textColorHover, var(--cm-gutter-textColor));
+
+  /* Active Line */
+
+  --cm-activeLineBackgroundColor: var(--migratex-elements-editor-activeLineBackgroundColor, rgb(224 231 235 / 30%));
+
+  /* Cursor */
+
+  --cm-cursor-width: 2px;
+  --cm-cursor-backgroundColor: var(--migratex-elements-editor-cursorColor, var(--migratex-elements-textSecondary));
+
+  /* Matching Brackets */
+
+  --cm-matching-bracket: var(--migratex-elements-editor-matchingBracketBackgroundColor, rgb(50 140 130 / 0.3));
+
+  /* Selection */
+
+  --cm-selection-backgroundColorFocused: var(--migratex-elements-editor-selection-backgroundColor, #42b4ff);
+  --cm-selection-backgroundOpacityFocused: var(--migratex-elements-editor-selection-backgroundOpacity, 0.3);
+  --cm-selection-backgroundColorBlured: var(--migratex-elements-editor-selection-inactiveBackgroundColor, #c9e9ff);
+  --cm-selection-backgroundOpacityBlured: var(--migratex-elements-editor-selection-inactiveBackgroundOpacity, 0.3);
+
+  /* Panels */
+
+  --cm-panels-borderColor: var(--migratex-elements-editor-panels-borderColor, var(--migratex-elements-borderColor));
+
+  /* Search */
+
+  --cm-search-backgroundColor: var(--migratex-elements-editor-search-backgroundColor, var(--cm-backgroundColor));
+  --cm-search-textColor: var(--migratex-elements-editor-search-textColor, var(--migratex-elements-textSecondary));
+  --cm-search-closeButton-backgroundColor: var(--migratex-elements-editor-search-closeButton-backgroundColor, transparent);
+
+  --cm-search-closeButton-backgroundColorHover: var(
+    --migratex-elements-editor-search-closeButton-backgroundColorHover,
+    var(--migratex-elements-item-backgroundActive)
+  );
+
+  --cm-search-closeButton-textColor: var(
+    --migratex-elements-editor-search-closeButton-textColor,
+    var(--migratex-elements-item-contentDefault)
+  );
+
+  --cm-search-closeButton-textColorHover: var(
+    --migratex-elements-editor-search-closeButton-textColorHover,
+    var(--migratex-elements-item-contentActive)
+  );
+
+  --cm-search-button-backgroundColor: var(
+    --migratex-elements-editor-search-button-backgroundColor,
+    var(--migratex-elements-item-backgroundDefault)
+  );
+
+  --cm-search-button-backgroundColorHover: var(
+    --migratex-elements-editor-search-button-backgroundColorHover,
+    var(--migratex-elements-item-backgroundActive)
+  );
+
+  --cm-search-button-textColor: var(--migratex-elements-editor-search-button-textColor, var(--migratex-elements-textSecondary));
+
+  --cm-search-button-textColorHover: var(
+    --migratex-elements-editor-search-button-textColorHover,
+    var(--migratex-elements-textPrimary)
+  );
+
+  --cm-search-button-borderColor: var(--migratex-elements-editor-search-button-borderColor, transparent);
+  --cm-search-button-borderColorHover: var(--migratex-elements-editor-search-button-borderColorHover, transparent);
+
+  --cm-search-button-borderColorFocused: var(
+    --migratex-elements-editor-search-button-borderColorFocused,
+    var(--migratex-elements-borderColorActive)
+  );
+
+  --cm-search-input-backgroundColor: var(--migratex-elements-editor-search-input-backgroundColor, transparent);
+  --cm-search-input-textColor: var(--migratex-elements-editor-search-input-textColor, var(--migratex-elements-textPrimary));
+  --cm-search-input-borderColor: var(--migratex-elements-editor-search-input-borderColor, var(--migratex-elements-borderColor));
+
+  --cm-search-input-borderColorFocused: var(
+    --migratex-elements-editor-search-input-borderColorFocused,
+    var(--migratex-elements-borderColorActive)
+  );
+
+  /* Tooltip */
+
+  --cm-tooltip-backgroundColor: var(--migratex-elements-editor-tooltip-backgroundColor, var(--cm-backgroundColor));
+  --cm-tooltip-textColor: var(--migratex-elements-editor-tooltip-textColor, var(--migratex-elements-textPrimary));
+
+  --cm-tooltip-backgroundColorSelected: var(
+    --migratex-elements-editor-tooltip-backgroundColorSelected,
+    theme('colors.alpha.accent.30')
+  );
+
+  --cm-tooltip-textColorSelected: var(
+    --migratex-elements-editor-tooltip-textColorSelected,
+    var(--migratex-elements-textPrimary)
+  );
+
+  --cm-tooltip-borderColor: var(--migratex-elements-editor-tooltip-borderColor, var(--migratex-elements-borderColor));
+
+  --cm-searchMatch-backgroundColor: var(--migratex-elements-editor-searchMatch-backgroundColor, rgba(234, 92, 0, 0.33));
+}
+
+html[data-theme='light'] {
+  --migratex-elements-editor-gutter-textColor: #637392;
+  --migratex-elements-editor-gutter-activeLineTextColor: #253143;
+  --migratex-elements-editor-foldGutter-textColorHover: #253143;
+  --migratex-elements-editor-activeLineBackgroundColor: rgba(108, 92, 231, 0.05);
+  --migratex-elements-editor-tooltip-backgroundColorSelected: rgba(108, 92, 231, 0.15);
+  --migratex-elements-editor-search-button-backgroundColor: #F7F9FC;
+  --migratex-elements-editor-search-button-backgroundColorHover: #DDE3EE;
+  --cm-selection-backgroundColorFocused: #6C5CE7;
+  --cm-selection-backgroundOpacityFocused: 0.2;
+}
+
+html[data-theme='dark'] {
+  --cm-backgroundColor: var(--migratex-elements-bg-depth-2);
+  --migratex-elements-editor-gutter-textColor: var(--migratex-elements-textTertiary);
+  --migratex-elements-editor-gutter-activeLineTextColor: var(--migratex-elements-textSecondary);
+  --migratex-elements-editor-selection-inactiveBackgroundOpacity: 0.3;
+  --migratex-elements-editor-activeLineBackgroundColor: rgb(50 53 63 / 50%);
+  --migratex-elements-editor-foldGutter-textColorHover: var(--migratex-elements-textPrimary);
+  --migratex-elements-editor-matchingBracketBackgroundColor: rgba(66, 180, 255, 0.3);
+  --migratex-elements-editor-search-button-backgroundColor: theme('colors.gray.800');
+  --migratex-elements-editor-search-button-backgroundColorHover: theme('colors.alpha.white.10');
+}

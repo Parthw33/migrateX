@@ -1,0 +1,498 @@
+/**
+ * workbench-ide.scss
+ *
+ * Light-mode token overrides and structural styles for WorkbenchIDEView.
+ * Scoped to .workbench-ide-light so nothing leaks into other parts of the app.
+ * The terminal intentionally keeps the dark background per the MigrateX design spec
+ * (--migratex-elements-terminals-background: #1A1919).
+ */
+
+.workbench-ide-light {
+  // ── Token overrides (light mode) ─────────────────────────────────────────
+  --migratex-elements-background-depth-1: #ffffff;
+  --migratex-elements-background-depth-2: #f7f9fc;
+  --migratex-elements-background-depth-3: #eef1f8;
+  --migratex-elements-background-depth-4: rgba(71, 81, 97, 0.05);
+
+  --migratex-elements-borderColor: #dde3ee;
+  --migratex-elements-borderColorActive: #6c5ce7;
+  --migratex-elements-dividerColor: #dde3ee;
+
+  --migratex-elements-textPrimary: #253143;
+  --migratex-elements-textSecondary: #475161;
+  --migratex-elements-textTertiary: #637392;
+
+  --migratex-elements-item-contentDefault: #637392;
+  --migratex-elements-item-contentActive: #253143;
+  --migratex-elements-item-contentAccent: #6c5ce7;
+  --migratex-elements-item-backgroundDefault: transparent;
+  --migratex-elements-item-backgroundActive: rgba(71, 81, 97, 0.08);
+  --migratex-elements-item-backgroundAccent: rgba(108, 92, 231, 0.1);
+
+  // Editor surface (CodeMirror picks these up via editor.scss)
+  --migratex-elements-bg-depth-1: #ffffff;
+  --migratex-elements-bg-depth-2: #f7f9fc;
+  --migratex-elements-bg-depth-3: #eef1f8;
+
+  // CodeMirror-specific token overrides
+  --cm-backgroundColor: #ffffff;
+  --cm-textColor: #253143;
+  --cm-gutter-backgroundColor: #f7f9fc;
+  --cm-gutter-textColor: #adb8cc;
+  --cm-gutter-activeLineTextColor: #6c5ce7;
+  --cm-activeLineBackgroundColor: rgba(108, 92, 231, 0.04);
+  --cm-cursor-backgroundColor: #6c5ce7;
+  --cm-selection-backgroundColorFocused: #6c5ce7;
+  --cm-selection-backgroundOpacityFocused: 0.15;
+  --cm-selection-backgroundColorBlured: #6c5ce7;
+  --cm-selection-backgroundOpacityBlured: 0.08;
+  --cm-matching-bracket: rgba(108, 92, 231, 0.2);
+  --cm-panels-borderColor: #dde3ee;
+  --cm-search-backgroundColor: #ffffff;
+  --cm-search-textColor: #253143;
+
+  // ── Structural layout ─────────────────────────────────────────────────────
+
+  background: var(--migratex-elements-background-depth-1);
+  color: var(--migratex-elements-textPrimary);
+
+  // Top toolbar
+  .ide-toolbar {
+    background: var(--migratex-elements-background-depth-1);
+    border-color: var(--migratex-elements-borderColor);
+    color: var(--migratex-elements-textPrimary);
+
+    button {
+      appearance: none;
+    }
+  }
+
+  // Activity bar — icon colours from SCSS only (no Uno text-* on the buttons)
+  .ide-activity-bar {
+    background: var(--migratex-elements-background-depth-2);
+    border-color: var(--migratex-elements-borderColor);
+
+    button.ide-activity-icon {
+      flex-shrink: 0;
+      background: transparent;
+      color: #637392;
+
+      svg {
+        display: block;
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+      }
+
+      svg,
+      svg path {
+        fill: currentColor;
+      }
+
+      &:hover {
+        color: #253143;
+        background: rgba(71, 81, 97, 0.08);
+      }
+    }
+
+    button.ide-activity-icon.ide-activity-icon--active {
+      color: #6c5ce7;
+    }
+
+    // Active indicator stripe
+    button.ide-activity-icon--active::before {
+      content: '';
+      background: #6c5ce7;
+    }
+  }
+
+  // Status bar — purple strip at the bottom
+  .ide-status-bar {
+    background: #6c5ce7;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-family: var(--font-sans, system-ui, sans-serif);
+
+    .ide-si {
+      color: rgba(255, 255, 255, 0.85);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+    }
+  }
+
+  // Code / Preview toolbar tabs
+  .ide-view-tab {
+    color: var(--migratex-elements-textSecondary);
+  }
+
+  // ── File tree panel ────────────────────────────────────────────────────────
+  // EditorPanel renders the file-tree panel; override its header & background.
+
+  .file-tree-header-wrapper,
+  .panel-header {
+    background: var(--migratex-elements-background-depth-2) !important;
+    border-bottom-color: var(--migratex-elements-borderColor) !important;
+    color: var(--migratex-elements-textTertiary) !important;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  // ── Editor tabs ────────────────────────────────────────────────────────────
+  // The tab bar is rendered inside EditorPanel via PanelHeader.
+
+  .file-tabs-container {
+    background: var(--migratex-elements-background-depth-2);
+    border-bottom: 1px solid var(--migratex-elements-borderColor);
+  }
+
+  .file-tab {
+    background: var(--migratex-elements-background-depth-2);
+    color: var(--migratex-elements-textTertiary);
+    border-right: 1px solid var(--migratex-elements-borderColor);
+
+    &.active,
+    &[data-active='true'] {
+      background: var(--migratex-elements-background-depth-1);
+      color: var(--migratex-elements-textPrimary);
+      border-top: 2px solid #6c5ce7;
+    }
+
+    &:hover:not(.active) {
+      background: var(--migratex-elements-background-depth-3);
+      color: var(--migratex-elements-textSecondary);
+    }
+  }
+
+  // ── Breadcrumb ─────────────────────────────────────────────────────────────
+
+  .file-breadcrumb {
+    background: var(--migratex-elements-background-depth-1);
+    border-bottom: 1px solid var(--migratex-elements-borderColor);
+    color: var(--migratex-elements-textTertiary);
+    font-size: 12px;
+  }
+
+  // ── resize-handle overrides ────────────────────────────────────────────────
+
+  [data-panel-resize-handle-id] {
+    background: transparent;
+    transition: background 0.12s;
+
+    &:hover,
+    &[data-resize-handle-active] {
+      background: #6c5ce7 !important;
+    }
+  }
+
+  // ── Terminal panel ─────────────────────────────────────────────────────────
+  // Terminal intentionally stays dark (MigrateX spec: terminals-background: #1A1919).
+  // Only override the *header* of the terminal tab strip to match the toolbar style.
+
+  .terminal-wrapper {
+    border-top: 1px solid #333;
+  }
+
+  .terminal-tab-header {
+    background: #1e1e1e;
+    border-bottom: 1px solid #2c2c2c;
+    color: #858585;
+
+    .active-tab {
+      color: #e0e0e0;
+      border-bottom-color: #6c5ce7;
+    }
+  }
+
+  // ── Panel header buttons ───────────────────────────────────────────────────
+
+  .panel-header-button {
+    color: var(--migratex-elements-textSecondary);
+    border: 1px solid var(--migratex-elements-borderColor);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--migratex-elements-background-depth-1);
+    transition: background 0.12s, color 0.12s;
+
+    &:hover {
+      background: var(--migratex-elements-background-depth-3);
+      color: var(--migratex-elements-textPrimary);
+    }
+  }
+
+  // ── Scrollbars ─────────────────────────────────────────────────────────────
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--migratex-elements-borderColor);
+    border-radius: 2px;
+
+    &:hover {
+      background: #adb8cc;
+    }
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/**
+ * workbench-ide-dark.scss
+ *
+ * Dark-mode token overrides and structural styles for WorkbenchIDEView.
+ * Scoped to .workbench-ide-dark so nothing leaks into other parts of the app.
+ * The terminal keeps the same dark background as it's already optimized.
+ */
+
+.workbench-ide-dark {
+  // ── Token overrides (dark mode) — aligned with variables.scss dark theme ─
+  --migratex-elements-background-depth-1: #0d1117;
+  --migratex-elements-background-depth-2: #161b22;
+  --migratex-elements-background-depth-3: #21262d;
+  --migratex-elements-background-depth-4: rgba(110, 118, 129, 0.12);
+
+  --migratex-elements-borderColor: #30363d;
+  --migratex-elements-borderColorActive: #8b7ae8;
+  --migratex-elements-dividerColor: #30363d;
+
+  --migratex-elements-textPrimary: #e6edf3;
+  --migratex-elements-textSecondary: #8b949e;
+  --migratex-elements-textTertiary: #6e7681;
+
+  --migratex-elements-item-contentDefault: #8b949e;
+  --migratex-elements-item-contentActive: #e6edf3;
+  --migratex-elements-item-contentAccent: #a78bfa;
+  --migratex-elements-item-backgroundDefault: transparent;
+  --migratex-elements-item-backgroundActive: rgba(110, 118, 129, 0.18);
+  --migratex-elements-item-backgroundAccent: rgba(108, 92, 231, 0.18);
+
+  // Editor surface (CodeMirror picks these up via editor.scss)
+  --migratex-elements-bg-depth-1: #0d1117;
+  --migratex-elements-bg-depth-2: #161b22;
+  --migratex-elements-bg-depth-3: #21262d;
+
+  // CodeMirror-specific — high-contrast readable dark editor
+  --cm-backgroundColor: #0d1117;
+  --cm-textColor: #e6edf3;
+  --cm-gutter-backgroundColor: #161b22;
+  --cm-gutter-textColor: #6e7681;
+  --cm-gutter-activeLineTextColor: #a78bfa;
+  --cm-activeLineBackgroundColor: rgba(108, 92, 231, 0.09);
+  --cm-cursor-backgroundColor: #a78bfa;
+  --cm-selection-backgroundColorFocused: #6c5ce7;
+  --cm-selection-backgroundOpacityFocused: 0.28;
+  --cm-selection-backgroundColorBlured: #6c5ce7;
+  --cm-selection-backgroundOpacityBlured: 0.16;
+  --cm-matching-bracket: rgba(167, 139, 250, 0.35);
+  --cm-panels-borderColor: #30363d;
+  --cm-search-backgroundColor: #21262d;
+  --cm-search-textColor: #e6edf3;
+
+  // ── Structural layout ─────────────────────────────────────────────────────
+
+  background: var(--migratex-elements-background-depth-1);
+  color: var(--migratex-elements-textPrimary);
+
+  // Top toolbar
+  .ide-toolbar {
+    background: var(--migratex-elements-background-depth-1);
+    border-color: var(--migratex-elements-borderColor);
+    color: var(--migratex-elements-textPrimary);
+
+    button {
+      appearance: none;
+    }
+  }
+
+  // Activity bar — high-contrast icons (SCSS only; matches `ide-activity-icon--active` in TSX)
+  .ide-activity-bar {
+    background: var(--migratex-elements-background-depth-2);
+    border-color: var(--migratex-elements-borderColor);
+
+    button.ide-activity-icon {
+      flex-shrink: 0;
+      background: transparent;
+      color: #8b949e;
+      opacity: 1;
+
+      svg {
+        display: block;
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        opacity: 1;
+      }
+
+      svg,
+      svg path {
+        fill: currentColor;
+        stroke: none;
+      }
+
+      &:hover {
+        color: #e6edf3;
+        background: rgba(110, 118, 129, 0.2);
+      }
+    }
+
+    button.ide-activity-icon.ide-activity-icon--active {
+      color: #c4b5fd;
+    }
+
+    // Active indicator stripe
+    button.ide-activity-icon--active::before {
+      content: '';
+      background: #8b7ae8;
+    }
+  }
+
+  // Status bar — dark strip + violet accent (distinct from light mode purple bar)
+  .ide-status-bar {
+    background: linear-gradient(180deg, #1c2128 0%, #12151c 100%);
+    border-top: 1px solid rgba(139, 122, 232, 0.45);
+    color: rgba(230, 237, 243, 0.88);
+    font-size: 11px;
+    font-family: var(--font-sans, system-ui, sans-serif);
+
+    .ide-si {
+      color: rgba(139, 148, 158, 0.95);
+
+      &:hover {
+        background: rgba(110, 118, 129, 0.22);
+        color: #e6edf3;
+      }
+    }
+  }
+
+  // Code / Preview toolbar tabs
+  .ide-view-tab {
+    color: var(--migratex-elements-textSecondary);
+  }
+
+  // ── File tree panel ────────────────────────────────────────────────────────
+  // EditorPanel renders the file-tree panel; override its header & background.
+
+  .file-tree-header-wrapper,
+  .panel-header {
+    background: var(--migratex-elements-background-depth-2) !important;
+    border-bottom-color: var(--migratex-elements-borderColor) !important;
+    color: var(--migratex-elements-textTertiary) !important;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  // ── Editor tabs ────────────────────────────────────────────────────────────
+  // The tab bar is rendered inside EditorPanel via PanelHeader.
+
+  .file-tabs-container {
+    background: var(--migratex-elements-background-depth-2);
+    border-bottom: 1px solid var(--migratex-elements-borderColor);
+  }
+
+  .file-tab {
+    background: var(--migratex-elements-background-depth-2);
+    color: var(--migratex-elements-textTertiary);
+    border-right: 1px solid var(--migratex-elements-borderColor);
+
+    &.active,
+    &[data-active='true'] {
+      background: var(--migratex-elements-background-depth-1);
+      color: var(--migratex-elements-textPrimary);
+      border-top: 2px solid #8b7ae8;
+    }
+
+    &:hover:not(.active) {
+      background: var(--migratex-elements-background-depth-3);
+      color: var(--migratex-elements-textSecondary);
+    }
+  }
+
+  // ── Breadcrumb ─────────────────────────────────────────────────────────────
+
+  .file-breadcrumb {
+    background: var(--migratex-elements-background-depth-1);
+    border-bottom: 1px solid var(--migratex-elements-borderColor);
+    color: var(--migratex-elements-textTertiary);
+    font-size: 12px;
+  }
+
+  // ── resize-handle overrides ────────────────────────────────────────────────
+
+  [data-panel-resize-handle-id] {
+    background: transparent;
+    transition: background 0.12s;
+
+    &:hover,
+    &[data-resize-handle-active] {
+      background: #8b7ae8 !important;
+    }
+  }
+
+  // ── Terminal panel ─────────────────────────────────────────────────────────
+  // Terminal intentionally stays dark (same as light mode).
+
+  .terminal-wrapper {
+    border-top: 1px solid #30363d;
+  }
+
+  .terminal-tab-header {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    color: #8b949e;
+
+    .active-tab {
+      color: #e6edf3;
+      border-bottom-color: #8b7ae8;
+    }
+  }
+
+  // ── Panel header buttons ───────────────────────────────────────────────────
+
+  .panel-header-button {
+    color: var(--migratex-elements-textSecondary);
+    border: 1px solid var(--migratex-elements-borderColor);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--migratex-elements-background-depth-1);
+    transition: background 0.12s, color 0.12s;
+
+    &:hover {
+      background: var(--migratex-elements-background-depth-3);
+      color: var(--migratex-elements-textPrimary);
+    }
+  }
+
+  // ── Scrollbars ─────────────────────────────────────────────────────────────
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--migratex-elements-borderColor);
+    border-radius: 2px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

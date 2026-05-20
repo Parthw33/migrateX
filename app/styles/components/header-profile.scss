@@ -1,0 +1,26 @@
+/* Account popover — clear separation from workbench chrome in dark mode */
+.migratex-profile-menu {
+  z-index: 100;
+  border-radius: 1rem;
+  background: var(--migratex-elements-bg-depth-1);
+  border: 1px solid var(--migratex-elements-borderColor);
+  box-shadow: 0 12px 40px rgba(37, 49, 67, 0.12), 0 2px 8px rgba(37, 49, 67, 0.06);
+}
+
+html[data-theme='dark'] .migratex-profile-menu {
+  background: var(--migratex-elements-bg-depth-3);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(108, 92, 231, 0.18),
+    0 20px 50px rgba(0, 0, 0, 0.58);
+}
+
+.migratex-profile-menu__signout {
+  color: var(--migratex-elements-button-secondary-text);
+  background: var(--migratex-elements-button-secondary-background);
+  border: 1px solid var(--migratex-elements-borderColor);
+
+  &:hover {
+    background: var(--migratex-elements-button-secondary-backgroundHover);
+  }
+}

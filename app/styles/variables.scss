@@ -1,0 +1,288 @@
+/* Migrate X - Professional Clean Light Theme (Default) */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* Borders */
+  --migratex-elements-borderColor: #DDE3EE;
+  --migratex-elements-borderColorActive: #6C5CE7;
+
+  /* Backgrounds - Clean whites and subtle grays */
+  --migratex-elements-bg-depth-1: #FFFFFF;
+  --migratex-elements-bg-depth-2: #F7F9FC;
+  --migratex-elements-bg-depth-3: #DDE3EE;
+  --migratex-elements-bg-depth-4: rgba(71, 81, 97, 0.05);
+
+  /* Typography - Professional dark text */
+  --migratex-elements-textPrimary: #253143;
+  --migratex-elements-textSecondary: #475161;
+  --migratex-elements-textTertiary: #637392;
+
+  /* Code */
+  --migratex-elements-code-background: #F7F9FC;
+  --migratex-elements-code-text: #253143;
+
+  /* Primary Button - Brand purple */
+  --migratex-elements-button-primary-background: rgba(108, 92, 231, 0.1);
+  --migratex-elements-button-primary-backgroundHover: rgba(108, 92, 231, 0.2);
+  --migratex-elements-button-primary-text: #6C5CE7;
+
+  /* Secondary Button */
+  --migratex-elements-button-secondary-background: #F7F9FC;
+  --migratex-elements-button-secondary-backgroundHover: #DDE3EE;
+  --migratex-elements-button-secondary-text: #253143;
+
+  /* Danger Button */
+  --migratex-elements-button-danger-background: #FFF0ED;
+  --migratex-elements-button-danger-backgroundHover: rgba(163, 27, 0, 0.15);
+  --migratex-elements-button-danger-text: #A31B00;
+
+  /* Items */
+  --migratex-elements-item-contentDefault: #637392;
+  --migratex-elements-item-contentActive: #253143;
+  --migratex-elements-item-contentAccent: #6C5CE7;
+  --migratex-elements-item-contentDanger: #A31B00;
+  --migratex-elements-item-backgroundDefault: transparent;
+  --migratex-elements-item-backgroundActive: rgba(71, 81, 97, 0.08);
+  --migratex-elements-item-backgroundAccent: rgba(108, 92, 231, 0.1);
+  --migratex-elements-item-backgroundDanger: #FFF0ED;
+
+  /* Loader */
+  --migratex-elements-loader-background: #DDE3EE;
+  --migratex-elements-loader-progress: #6C5CE7;
+
+  /* Artifacts */
+  --migratex-elements-artifacts-background: #FFFFFF;
+  --migratex-elements-artifacts-backgroundHover: #F7F9FC;
+  --migratex-elements-artifacts-borderColor: #DDE3EE;
+  --migratex-elements-artifacts-inlineCode-background: #F7F9FC;
+  --migratex-elements-artifacts-inlineCode-text: #253143;
+
+  /* Actions */
+  --migratex-elements-actions-background: #FFFFFF;
+  --migratex-elements-actions-code-background: #253143;
+
+  /* Messages */
+  --migratex-elements-messages-background: #F7F9FC;
+  --migratex-elements-messages-linkColor: #6C5CE7;
+  --migratex-elements-messages-code-background: #253143;
+  --migratex-elements-messages-inlineCode-background: #DDE3EE;
+  --migratex-elements-messages-inlineCode-text: #253143;
+
+  /* Icons */
+  --migratex-elements-icon-success: #007A52;
+  --migratex-elements-icon-error: #A31B00;
+  --migratex-elements-icon-primary: #253143;
+  --migratex-elements-icon-secondary: #475161;
+  --migratex-elements-icon-tertiary: #637392;
+
+  /* Divider */
+  --migratex-elements-dividerColor: #DDE3EE;
+
+  /* Prompt */
+  --migratex-elements-prompt-background: rgba(255, 255, 255, 0.95);
+
+  /* Sidebar */
+  --migratex-elements-sidebar-dropdownShadow: rgba(37, 49, 67, 0.1);
+  --migratex-elements-sidebar-buttonBackgroundDefault: rgba(108, 92, 231, 0.1);
+  --migratex-elements-sidebar-buttonBackgroundHover: rgba(108, 92, 231, 0.15);
+  --migratex-elements-sidebar-buttonText: #6C5CE7;
+
+  /* Preview Address Bar */
+  --migratex-elements-preview-addressBar-background: #F7F9FC;
+  --migratex-elements-preview-addressBar-backgroundHover: #DDE3EE;
+  --migratex-elements-preview-addressBar-backgroundActive: #FFFFFF;
+  --migratex-elements-preview-addressBar-text: #637392;
+  --migratex-elements-preview-addressBar-textActive: #253143;
+
+  /* Terminals - Keep dark for better readability */
+  --migratex-elements-terminals-background: #1A1919;
+  --migratex-elements-terminals-buttonBackground: rgba(255, 255, 255, 0.1);
+
+  /* CTA */
+  --migratex-elements-cta-background: #F7F9FC;
+  --migratex-elements-cta-text: #253143;
+
+  /* Terminal Colors - Dark terminal */
+  --migratex-terminal-background: #1A1919;
+  --migratex-terminal-foreground: #EBEBEB;
+  --migratex-terminal-selection-background: rgba(108, 92, 231, 0.3);
+  --migratex-terminal-black: #000000;
+  --migratex-terminal-red: #EB5646;
+  --migratex-terminal-green: #00A66D;
+  --migratex-terminal-yellow: #FFAE0A;
+  --migratex-terminal-blue: #0469E3;
+  --migratex-terminal-magenta: #C33CF8;
+  --migratex-terminal-cyan: #0598bc;
+  --migratex-terminal-white: #F7F9FC;
+  --migratex-terminal-brightBlack: #637392;
+  --migratex-terminal-brightRed: #EB5646;
+  --migratex-terminal-brightGreen: #00A66D;
+  --migratex-terminal-brightYellow: #FFAE0A;
+  --migratex-terminal-brightBlue: #0469E3;
+  --migratex-terminal-brightMagenta: #C33CF8;
+  --migratex-terminal-brightCyan: #0598bc;
+  --migratex-terminal-brightWhite: #FFFFFF;
+}
+
+/* Migrate X - Dark Theme (IDE-style slate + violet accents) */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Borders — crisp separators like modern code tools */
+  --migratex-elements-borderColor: #30363d;
+  --migratex-elements-borderColorActive: #8b7ae8;
+
+  /* Backgrounds — GitHub-dark–inspired elevation */
+  --migratex-elements-bg-depth-1: #0d1117;
+  --migratex-elements-bg-depth-2: #161b22;
+  --migratex-elements-bg-depth-3: #21262d;
+  --migratex-elements-bg-depth-4: rgba(110, 118, 129, 0.12);
+
+  /* Typography */
+  --migratex-elements-textPrimary: #e6edf3;
+  --migratex-elements-textSecondary: #8b949e;
+  --migratex-elements-textTertiary: #6e7681;
+
+  /* Code */
+  --migratex-elements-code-background: #161b22;
+  --migratex-elements-code-text: #e6edf3;
+
+  /* Primary Button */
+  --migratex-elements-button-primary-background: rgba(108, 92, 231, 0.22);
+  --migratex-elements-button-primary-backgroundHover: rgba(108, 92, 231, 0.32);
+  --migratex-elements-button-primary-text: #c4b5fd;
+
+  /* Secondary Button */
+  --migratex-elements-button-secondary-background: #21262d;
+  --migratex-elements-button-secondary-backgroundHover: #30363d;
+  --migratex-elements-button-secondary-text: #e6edf3;
+
+  /* Danger Button */
+  --migratex-elements-button-danger-background: rgba(248, 81, 73, 0.15);
+  --migratex-elements-button-danger-backgroundHover: rgba(248, 81, 73, 0.22);
+  --migratex-elements-button-danger-text: #ff7b72;
+
+  /* Items */
+  --migratex-elements-item-contentDefault: #8b949e;
+  --migratex-elements-item-contentActive: #e6edf3;
+  --migratex-elements-item-contentAccent: #a78bfa;
+  --migratex-elements-item-contentDanger: #ff7b72;
+  --migratex-elements-item-backgroundDefault: transparent;
+  --migratex-elements-item-backgroundActive: rgba(110, 118, 129, 0.18);
+  --migratex-elements-item-backgroundAccent: rgba(108, 92, 231, 0.18);
+  --migratex-elements-item-backgroundDanger: rgba(248, 81, 73, 0.12);
+
+  /* Loader */
+  --migratex-elements-loader-background: #21262d;
+  --migratex-elements-loader-progress: #8b7ae8;
+
+  /* Artifacts */
+  --migratex-elements-artifacts-background: #161b22;
+  --migratex-elements-artifacts-backgroundHover: #21262d;
+  --migratex-elements-artifacts-borderColor: #30363d;
+  --migratex-elements-artifacts-inlineCode-background: #21262d;
+  --migratex-elements-artifacts-inlineCode-text: #e6edf3;
+
+  /* Actions */
+  --migratex-elements-actions-background: #161b22;
+  --migratex-elements-actions-code-background: #0d1117;
+
+  /* Messages */
+  --migratex-elements-messages-background: #161b22;
+  --migratex-elements-messages-linkColor: #a78bfa;
+  --migratex-elements-messages-code-background: #0d1117;
+  --migratex-elements-messages-inlineCode-background: #21262d;
+  --migratex-elements-messages-inlineCode-text: #e6edf3;
+
+  /* Icons */
+  --migratex-elements-icon-success: #3fb950;
+  --migratex-elements-icon-error: #ff7b72;
+  --migratex-elements-icon-primary: #e6edf3;
+  --migratex-elements-icon-secondary: #8b949e;
+  --migratex-elements-icon-tertiary: #6e7681;
+
+  /* Divider */
+  --migratex-elements-dividerColor: #30363d;
+
+  /* Prompt */
+  --migratex-elements-prompt-background: rgba(13, 17, 23, 0.92);
+
+  /* Sidebar */
+  --migratex-elements-sidebar-dropdownShadow: rgba(1, 4, 9, 0.55);
+  --migratex-elements-sidebar-buttonBackgroundDefault: rgba(108, 92, 231, 0.2);
+  --migratex-elements-sidebar-buttonBackgroundHover: rgba(108, 92, 231, 0.3);
+  --migratex-elements-sidebar-buttonText: #c4b5fd;
+
+  /* Preview Address Bar */
+  --migratex-elements-preview-addressBar-background: #161b22;
+  --migratex-elements-preview-addressBar-backgroundHover: #21262d;
+  --migratex-elements-preview-addressBar-backgroundActive: #0d1117;
+  --migratex-elements-preview-addressBar-text: #8b949e;
+  --migratex-elements-preview-addressBar-textActive: #e6edf3;
+
+  /* Terminals */
+  --migratex-elements-terminals-background: #010409;
+  --migratex-elements-terminals-buttonBackground: #21262d;
+
+  /* CTA */
+  --migratex-elements-cta-background: #21262d;
+  --migratex-elements-cta-text: #e6edf3;
+
+  /* Terminal Colors */
+  --migratex-terminal-background: #1A1919;
+  --migratex-terminal-foreground: #EBEBEB;
+  --migratex-terminal-selection-background: rgba(108, 92, 231, 0.3);
+  --migratex-terminal-black: #000000;
+  --migratex-terminal-red: #EB5646;
+  --migratex-terminal-green: #00A66D;
+  --migratex-terminal-yellow: #FFAE0A;
+  --migratex-terminal-blue: #0469E3;
+  --migratex-terminal-magenta: #C33CF8;
+  --migratex-terminal-cyan: #0598bc;
+  --migratex-terminal-white: #F7F9FC;
+  --migratex-terminal-brightBlack: #637392;
+  --migratex-terminal-brightRed: #EB5646;
+  --migratex-terminal-brightGreen: #00A66D;
+  --migratex-terminal-brightYellow: #FFAE0A;
+  --migratex-terminal-brightBlue: #0469E3;
+  --migratex-terminal-brightMagenta: #C33CF8;
+  --migratex-terminal-brightCyan: #0598bc;
+  --migratex-terminal-brightWhite: #FFFFFF;
+}
+
+/* Element Tokens */
+:root {
+  --header-height: 56px;
+  --chat-max-width: 37rem;
+  --chat-min-width: 640px;
+  --workbench-width: min(calc(100% - var(--chat-min-width)), 1536px);
+  --workbench-inner-width: var(--workbench-width);
+  --workbench-left: calc(100% - var(--workbench-width));
+
+  /* Toasts */
+  --toastify-color-progress-success: var(--migratex-elements-icon-success);
+  --toastify-color-progress-error: var(--migratex-elements-icon-error);
+
+  /* Terminal */
+  --migratex-elements-terminal-backgroundColor: var(--migratex-terminal-background);
+  --migratex-elements-terminal-textColor: var(--migratex-terminal-foreground);
+  --migratex-elements-terminal-cursorColor: var(--migratex-terminal-foreground);
+  --migratex-elements-terminal-selection-backgroundColor: var(--migratex-terminal-selection-background);
+  --migratex-elements-terminal-color-black: var(--migratex-terminal-black);
+  --migratex-elements-terminal-color-red: var(--migratex-terminal-red);
+  --migratex-elements-terminal-color-green: var(--migratex-terminal-green);
+  --migratex-elements-terminal-color-yellow: var(--migratex-terminal-yellow);
+  --migratex-elements-terminal-color-blue: var(--migratex-terminal-blue);
+  --migratex-elements-terminal-color-magenta: var(--migratex-terminal-magenta);
+  --migratex-elements-terminal-color-cyan: var(--migratex-terminal-cyan);
+  --migratex-elements-terminal-color-white: var(--migratex-terminal-white);
+  --migratex-elements-terminal-color-brightBlack: var(--migratex-terminal-brightBlack);
+  --migratex-elements-terminal-color-brightRed: var(--migratex-terminal-brightRed);
+  --migratex-elements-terminal-color-brightGreen: var(--migratex-terminal-brightGreen);
+  --migratex-elements-terminal-color-brightYellow: var(--migratex-terminal-brightYellow);
+  --migratex-elements-terminal-color-brightBlue: var(--migratex-terminal-brightBlue);
+  --migratex-elements-terminal-color-brightMagenta: var(--migratex-terminal-brightMagenta);
+  --migratex-elements-terminal-color-brightCyan: var(--migratex-terminal-brightCyan);
+  --migratex-elements-terminal-color-brightWhite: var(--migratex-terminal-brightWhite);
+}

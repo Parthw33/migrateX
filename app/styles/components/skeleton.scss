@@ -1,0 +1,101 @@
+/* ── Skeleton / shimmer loading system ─────────────────────────────────────
+   Works with the .skeleton-* utility classes defined in Skeleton.tsx.
+   Uses CSS custom properties so it respects the dark/light theme tokens.
+   ─────────────────────────────────────────────────────────────────────── */
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ── Base shimmer ───────────────────────────────────────────────────────── */
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--migratex-elements-bg-depth-2, #f0f0f0) 25%,
+    var(--migratex-elements-bg-depth-3, #e4e4e4) 37%,
+    var(--migratex-elements-bg-depth-2, #f0f0f0) 63%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+/* ── Pulse variant (quieter) ────────────────────────────────────────────── */
+
+.skeleton-pulse {
+  background-color: var(--migratex-elements-bg-depth-2, #f0f0f0);
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* ── Global top progress bar ────────────────────────────────────────────── */
+
+@keyframes nprogress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(0%); }
+}
+
+@keyframes nprogress-indeterminate {
+  0%   { left: -35%; right: 100%; }
+  60%  { left: 100%; right: -90%; }
+  100% { left: 100%; right: -90%; }
+}
+
+#global-loader-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  height: 2px;
+  background: #6c5ce7;
+  pointer-events: none;
+  transform-origin: left center;
+  transition: opacity 300ms ease, width 200ms ease;
+
+  &::after {
+    content: '';
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6));
+    animation: nprogress-slide 1s ease infinite;
+  }
+}
+
+#global-loader-bar.indeterminate {
+  width: 100% !important;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: inherit;
+    animation: nprogress-indeterminate 2.1s cubic-bezier(0.65,0.815,0.735,0.395) infinite;
+  }
+}
+
+/* ── File-tree skeleton rows ────────────────────────────────────────────── */
+
+.file-tree-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  height: 24px;
+}
