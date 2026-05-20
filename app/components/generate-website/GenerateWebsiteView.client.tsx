@@ -75,7 +75,6 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
   const showTerminal = useStore(workbenchStore.showTerminal);
 
   const initRef = useRef(false);
-  const autoSyncRef = useRef(false);
   const [breadcrumb, setBreadcrumb] = useState('');
 
   // Panel visibility state
@@ -91,27 +90,11 @@ function GenerateWebsiteInner({ jobId: routeJobId }: { jobId?: string }) {
   useWebsiteJobPoller(effectiveJobId);
   useGenerationChatBridge(generationStatus);
 
-  // Auto-sync files only once the live poll has decided the job is in a
-  // terminal state — 'done' (already deployed / completed) or 'paused'
-  // (Contentstack Launch deploying). For mid-stream generations the live
-  // poll drives the file delivery; firing a parallel full-sync there would
-  // race with the poll and produce file-activity chat bubbles AFTER the
-  // "✅ All files loaded" success message.
-  useEffect(() => {
-    if (autoSyncRef.current || !appToken || !effectiveJobId) return;
-
-    const ready =
-      generationStatus.phase === 'paused' || generationStatus.phase === 'done';
-
-    if (!ready) return;
-
-    autoSyncRef.current = true;
-    const t = setTimeout(() => {
-      requestWebsiteLiveFilesSync();
-      toast.info('Syncing latest files…', { autoClose: 2500 });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [appToken, effectiveJobId, generationStatus.phase]);
+  // Auto-sync is driven from a single place: `useWebsiteJobPoller` watches
+  // the Supabase job row and fires one full sync the moment the backend
+  // moves past file generation (build attempt / deploying / deployed).
+  // A second phase-based trigger here would just race that one and produce
+  // two back-to-back syncs of the same files.
 
   // Open preview panel automatically when website_url appears
   useEffect(() => {
