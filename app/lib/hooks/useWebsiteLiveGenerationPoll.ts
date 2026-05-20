@@ -8,7 +8,11 @@ import {
   websiteGenerationSessionRevision,
   websiteLiveManualSyncRevision,
 } from '~/lib/websiteGenerationSession';
-import { extractRelPathsFromLiveResponse, normalizeWorkbenchPath, parseWebsiteLivePayload } from '~/lib/websiteLiveFiles';
+import {
+  extractContentBearingRelPaths,
+  normalizeWorkbenchPath,
+  parseWebsiteLivePayload,
+} from '~/lib/websiteLiveFiles';
 import { runWebsiteLiveFullSync } from '~/lib/websiteLiveFullSync';
 import { workbenchStore } from '~/lib/stores/workbench';
 import type { FileMap } from '~/lib/stores/files';
@@ -69,6 +73,9 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
   const s3FallbackStartedRef = useRef(false);
   const lastManifestPathsRef = useRef<string[]>([]);
   const contentstackLaunchPreSyncDoneRef = useRef(false);
+  // Set by the polling effect; the manual sync uses this to stop the interval
+  // once a sync proves the workbench is fully populated.
+  const pollStopperRef = useRef<(() => void) | null>(null);
 
   const [status, setStatus] = useState<WebsiteGenerationStatus>({
     isLoading: false,
@@ -112,6 +119,11 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
         globalThis.window.clearInterval(intervalId);
         intervalId = undefined;
       }
+    };
+
+    pollStopperRef.current = () => {
+      stopped = true;
+      stopInterval();
     };
 
     setStatus((prev) => ({ ...prev, isLoading: true, phase: 'polling' }));
@@ -257,7 +269,12 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
           }
         }
 
-        for (const p of extractRelPathsFromLiveResponse(data)) {
+        // Only track paths whose CONTENT actually arrived in this response —
+        // manifest listings just describe what exists. Counting manifest-only
+        // entries here previously caused premature phase: 'done' (e.g. when
+        // re-opening an already-deployed job the first poll lists 28 done
+        // files but ships none of their bodies).
+        for (const p of extractContentBearingRelPaths(data)) {
           pathsWithContentRef.current.add(p);
         }
 
@@ -291,18 +308,34 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
           return;
         }
 
-        if (manifestPaths.length > 0) {
+        // Only fetch paths the server has actually finished writing. During a
+        // fresh generation, the manifest grows but most entries sit in
+        // 'pending' / 'writing' for a while — issuing `?file=X` against those
+        // returns empty bodies and just burns 3 HTTP calls per 2s tick. We
+        // also skip paths we've already pulled content for, so the picker
+        // doesn't loop forever on the same files once the manifest stabilises.
+        const fetchablePaths = pendingS3Files
+          .filter((f) => isDoneManifestStatus(f.status) && f.path && !pathsWithContentRef.current.has(f.path))
+          .map((f) => f.path);
+
+        if (fetchablePaths.length > 0 || (writingFile && writingFile.trim())) {
           const picks: string[] = [];
           if (writingFile && writingFile.trim()) {
             picks.push(writingFile.trim());
           }
 
-          while (picks.length < MAX_FILE_QUERY_POLLS_PER_TICK && manifestPaths.length > 0) {
-            const i = liveFilePollIndexRef.current % manifestPaths.length;
+          while (picks.length < MAX_FILE_QUERY_POLLS_PER_TICK && fetchablePaths.length > 0) {
+            const i = liveFilePollIndexRef.current % fetchablePaths.length;
             liveFilePollIndexRef.current += 1;
-            const p = manifestPaths[i];
+            const p = fetchablePaths[i];
             if (p && !picks.includes(p)) {
               picks.push(p);
+            }
+            // Once we've cycled through every fetchable path once this tick,
+            // stop — re-picking the same paths within a single tick wastes
+            // requests without changing the outcome.
+            if (liveFilePollIndexRef.current % fetchablePaths.length === 0) {
+              break;
             }
           }
 
@@ -322,7 +355,7 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
               await workbenchStore.ingestWebsiteFiles(fparsed.fileMap);
             }
 
-            for (const p of extractRelPathsFromLiveResponse(fdata)) {
+            for (const p of extractContentBearingRelPaths(fdata)) {
               pathsWithContentRef.current.add(p);
             }
           }
@@ -409,6 +442,7 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
     return () => {
       cancelled = true;
       stopInterval();
+      pollStopperRef.current = null;
     };
   }, [appToken, sessionRev]);
 
@@ -442,15 +476,53 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
 
         lastManifestPathsRef.current = mergedManifestPaths;
 
+        // The sync just wrote every manifest path's content to the workbench,
+        // so mark them as loaded. Without this, the live-poll loop keeps
+        // re-fetching each file individually (3/tick) before it'll emit
+        // phase: 'done' — and the "All files loaded" chat message lags many
+        // seconds behind the actual sync completion.
+        for (const p of mergedManifestPaths) {
+          if (p) pathsWithContentRef.current.add(p);
+        }
+
         if (!cancelled) {
           toast.success(syncedPathCount ? `Synced ${syncedPathCount} paths from API` : 'Synced latest snapshot from API');
-          setStatus((prev) => ({
-            ...prev,
-            isLoading: false,
-            phase: prev.phase === 'paused' ? 'paused' : 'idle',
-            currentFile: '',
-            message: prev.phase === 'paused' ? prev.message : 'Sync complete',
-          }));
+
+          // If we have a real manifest and every path is now loaded, transition
+          // straight to 'done' so the chat-bridge can emit the success message
+          // *after* the sync completes (which is the correct ordering — without
+          // this the bridge has no way to know the workbench is now coherent).
+          const filesNow = workbenchStore.files.get();
+          const allManifestPathsLoaded =
+            mergedManifestPaths.length > 0 &&
+            mergedManifestPaths.every((rel) => {
+              const wb = normalizeWorkbenchPath(rel);
+              const dirent = wb ? filesNow[wb] : undefined;
+              return dirent?.type === 'file';
+            });
+
+          if (allManifestPathsLoaded) {
+            // Workbench is fully coherent — stop the live poll's redundant
+            // per-file fetches and emit 'done' so the chat-bridge runs the
+            // success message right after this sync (not 20s later).
+            pollStopperRef.current?.();
+            setStatus({
+              isLoading: false,
+              progress: 100,
+              message: 'All files loaded!',
+              phase: 'done',
+              currentFile: '',
+            });
+            workbenchStore.setDocuments(filesNow);
+          } else {
+            setStatus((prev) => ({
+              ...prev,
+              isLoading: false,
+              phase: prev.phase === 'paused' ? 'paused' : 'idle',
+              currentFile: '',
+              message: prev.phase === 'paused' ? prev.message : 'Sync complete',
+            }));
+          }
         }
       } catch (e) {
         if (!cancelled) {

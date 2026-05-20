@@ -168,7 +168,9 @@ export function parseWebsiteLivePayload(data: unknown): ParsedWebsiteLive {
     typeof o.writingFile === 'string' && o.writingFile.trim() ? o.writingFile.trim() : null;
 
   const st = status.toLowerCase();
-  if (['complete', 'completed', 'succeeded', 'success', 'failed', 'error', 'cancelled', 'canceled'].includes(st)) {
+  if (
+    ['complete', 'completed', 'succeeded', 'success', 'failed', 'error', 'cancelled', 'canceled', 'deployed'].includes(st)
+  ) {
     terminal = true;
   }
 
@@ -277,6 +279,87 @@ export function parseWebsiteLivePayload(data: unknown): ParsedWebsiteLive {
   mergeFilePreviewsFromRecord(o, fileMap);
 
   return { fileMap, terminal, status, s3Prefix, pendingS3Files, progress, message, writingFile, manifestStatus };
+}
+
+/**
+ * Relative paths the website/live JSON returned with ACTUAL CONTENT
+ * (inline `files`, `filePreviews`, `filePreview`). Manifest-only listings are
+ * intentionally excluded — they describe what exists, not what arrived.
+ *
+ * Use this when tracking which files have been loaded into the workbench. Use
+ * {@link extractRelPathsFromLiveResponse} when you want every path the
+ * response references (including the manifest), e.g. to drive a follow-up
+ * `?file=` fetch loop.
+ */
+export function extractContentBearingRelPaths(data: unknown): string[] {
+  if (!data || typeof data !== 'object') {
+    return [];
+  }
+
+  const o = data as Record<string, unknown>;
+  const out: string[] = [];
+
+  const files = o.files;
+  if (files && typeof files === 'object' && !Array.isArray(files)) {
+    for (const [k, v] of Object.entries(files as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.length > 0) {
+        out.push(k);
+      } else if (v && typeof v === 'object') {
+        const rec = v as Record<string, unknown>;
+        const c = rec.content ?? rec.body ?? rec.text ?? rec.source;
+        if (typeof c === 'string' && c.length > 0) {
+          out.push(k);
+        }
+      }
+    }
+  }
+
+  const fp = o.filePreviews;
+  if (Array.isArray(fp)) {
+    for (const item of fp) {
+      if (item && typeof item === 'object') {
+        const rec = item as Record<string, unknown>;
+        const p = String(rec.path ?? '').trim();
+        const c = rec.content ?? rec.body ?? rec.text ?? rec.preview ?? rec.data;
+        if (p && typeof c === 'string' && c.length > 0) {
+          out.push(p);
+        }
+      }
+    }
+  } else if (fp && typeof fp === 'object') {
+    for (const [k, v] of Object.entries(fp as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.length > 0) {
+        out.push(k);
+      } else if (v && typeof v === 'object') {
+        const rec = v as Record<string, unknown>;
+        const c = rec.content ?? rec.body ?? rec.text ?? rec.preview ?? rec.data ?? rec.source;
+        if (typeof c === 'string' && c.length > 0) {
+          out.push(k);
+        }
+      }
+    }
+  }
+
+  const single = o.filePreview;
+  if (single && typeof single === 'object' && !Array.isArray(single)) {
+    const rec = single as Record<string, unknown>;
+    const p = String(rec.path ?? '').trim();
+    const c = rec.content ?? rec.body ?? rec.text ?? rec.preview ?? rec.data;
+    if (p && typeof c === 'string' && c.length > 0) {
+      out.push(p);
+    }
+  }
+
+  if (
+    typeof o.writingFile === 'string' &&
+    o.writingFile.trim() &&
+    typeof o.filePreview === 'string' &&
+    o.filePreview.length > 0
+  ) {
+    out.push(o.writingFile.trim());
+  }
+
+  return [...new Set(out.map((p) => p.trim()).filter(Boolean))];
 }
 
 /** Relative paths the website/live JSON already names (global GET or nested previews/manifest). */
