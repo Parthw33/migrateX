@@ -1,5 +1,9 @@
 import { lambdaFetchWebsiteLive } from '~/lib/lambdaApi';
-import { extractRelPathsFromLiveResponse, parseWebsiteLivePayload } from '~/lib/websiteLiveFiles';
+import {
+  extractRelPathsFromLiveResponse,
+  normalizeWorkbenchPath,
+  parseWebsiteLivePayload,
+} from '~/lib/websiteLiveFiles';
 import { workbenchStore } from '~/lib/stores/workbench';
 
 async function parseLiveResponseBody(res: Response): Promise<{ data: unknown }> {
@@ -61,7 +65,28 @@ export async function runWebsiteLiveFullSync(
   // in one row at a time. A yield to the event loop between ingests lets
   // React paint each new file before the next fetch starts, which is the
   // "files showing one-by-one" UX users expect during a sync.
+  //
+  // Skip paths the workbench already has content for — this keeps the
+  // incremental syncs (fired by `useWebsiteJobPoller` on each new
+  // "files ready" message) cheap: each call only fetches what's actually
+  // new since the last sync.
+  const isAlreadyLoaded = (relPath: string): boolean => {
+    const wb = normalizeWorkbenchPath(relPath);
+    if (!wb) return false;
+    const dirent = workbenchStore.files.get()[wb];
+    return (
+      !!dirent &&
+      dirent.type === 'file' &&
+      typeof dirent.content === 'string' &&
+      dirent.content.length > 0
+    );
+  };
+
   for (const relPath of paths) {
+    if (isAlreadyLoaded(relPath)) {
+      continue;
+    }
+
     options?.onPath?.(relPath);
 
     try {

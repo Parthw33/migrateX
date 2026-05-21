@@ -30,6 +30,11 @@ export function useGenerationChatBridge(status: WebsiteGenerationStatus | null) 
   const lastFileRef = useRef<string>('');
   const lastProgressRef = useRef<number>(0);
   const seenFilesRef = useRef<Set<string>>(new Set());
+  // Each phase's intro message should appear at most once per session.
+  // Without this, the throttled incremental syncs (each transitioning
+  // phase to 'syncing' and back) would spam "🔃 Syncing latest file
+  // updates from the server…" five-plus times during a normal run.
+  const introsEmittedRef = useRef<Set<string>>(new Set());
 
   // Phase changes → AI messages
   useEffect(() => {
@@ -39,8 +44,9 @@ export function useGenerationChatBridge(status: WebsiteGenerationStatus | null) 
     // Emit intro message on phase transition
     if (phase !== lastPhaseRef.current && phase !== 'idle') {
       const intro = PHASE_INTRO[phase];
-      if (intro) {
+      if (intro && !introsEmittedRef.current.has(phase)) {
         websiteChat.addAI(intro);
+        introsEmittedRef.current.add(phase);
       }
       lastPhaseRef.current = phase;
 

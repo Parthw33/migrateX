@@ -53,6 +53,12 @@ export function useWebsiteJobPoller(jobId: string | null) {
   // before the user sees the "Done" badge; the manual sync iterates the
   // full manifest and is what actually populates the workbench tree.
   const postGenerationSyncRef = useRef(false);
+  // Throttle for the "files ready" trigger — while generation is still
+  // streaming, request an incremental sync each time the server reports a
+  // new batch of ready files, but not more than once every ~3 seconds so
+  // we don't queue overlapping syncs.
+  const lastFilesReadySyncAtRef = useRef(0);
+  const lastFilesReadyCountRef = useRef(0);
 
   useEffect(() => {
     if (!jobId) return;
@@ -62,6 +68,8 @@ export function useWebsiteJobPoller(jobId: string | null) {
     _lastWebsiteUrl = '';
     pollsRef.current = 0;
     postGenerationSyncRef.current = false;
+    lastFilesReadySyncAtRef.current = 0;
+    lastFilesReadyCountRef.current = 0;
 
     const sb = getSupabaseClient();
     if (!sb) {
@@ -142,6 +150,23 @@ export function useWebsiteJobPoller(jobId: string | null) {
           const ml = website_message.toLowerCase();
           if (ml.includes('build attempt') || ml.includes('deploying')) {
             postGenerationSyncRef.current = true;
+            requestWebsiteLiveFilesSync();
+          }
+        }
+
+        // Incremental sync while generation is still streaming. Each time
+        // the server reports a higher "X files ready" count, request a
+        // sync — throttled to once every ~3s — so the workbench tree
+        // keeps up with the chat instead of lagging behind by 20+ files.
+        const readyMatch = website_message.match(/(\d+)\s+files?\s+ready/i);
+        if (readyMatch) {
+          const readyCount = parseInt(readyMatch[1], 10);
+          const now = Date.now();
+          const grewSinceLast = readyCount > lastFilesReadyCountRef.current;
+          const throttleOk = now - lastFilesReadySyncAtRef.current >= 3000;
+          if (grewSinceLast && throttleOk) {
+            lastFilesReadyCountRef.current = readyCount;
+            lastFilesReadySyncAtRef.current = now;
             requestWebsiteLiveFilesSync();
           }
         }

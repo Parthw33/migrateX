@@ -19,7 +19,11 @@ import type { FileMap } from '~/lib/stores/files';
 
 const POLL_MS = 2000;
 const MAX_POLLS = 450;
-const MAX_FILE_QUERY_POLLS_PER_TICK = 3;
+// Pull every done-manifest file the server reports each tick, not just three.
+// At 3-per-tick a manifest of 20+ files takes 7+ ticks (14s+) to drain — long
+// enough that the server can flip to terminal status with most files still
+// unfetched, leaving the workbench nearly empty.
+const MAX_FILE_QUERY_POLLS_PER_TICK = 50;
 
 export interface WebsiteGenerationStatus {
   isLoading: boolean;
@@ -372,6 +376,10 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
             if (Object.keys(fparsed.fileMap).length > 0) {
               pathsWithContentRef.current.add(relPath);
               await workbenchStore.ingestWebsiteFiles(fparsed.fileMap);
+              // Yield so the file tree + chat feed paint between ingests —
+              // gives the "files appearing one-by-one" UX during a single
+              // tick instead of all 22 landing in one frame at the end.
+              await new Promise<void>((resolve) => setTimeout(resolve, 0));
             }
 
             for (const p of extractContentBearingRelPaths(fdata)) {
@@ -503,15 +511,14 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
     const jobId = session.jobId;
 
     const runSync = async () => {
-      // Stop the live poll BEFORE the sync starts. If the poll keeps running
-      // in parallel, an in-flight tick can ingest files after the sync emits
-      // its success message — surfacing file-activity chat bubbles AFTER the
-      // "✅ All files loaded" message, which is exactly the inconsistency
-      // users reported when re-opening a deployed job from the Dashboard.
-      // The early-bail checks added in run() ensure any tick that's already
-      // mid-await exits without writing to the workbench.
-      pollStopperRef.current?.();
-
+      // Don't stop the live poll here. With the incremental
+      // "files ready"-triggered syncs from `useWebsiteJobPoller`,
+      // multiple runs of this fire during a single generation; killing
+      // the poll on the first one would lose its safety-net per-tick
+      // fetching for everything that follows. Both paths now use the
+      // same "skip already loaded" guard, so they coexist without
+      // duplicate ingests, and the all-loaded branch below stops the
+      // poll explicitly once the workbench is truly complete.
       setIsSyncing(true);
       setStatus((prev) => ({ ...prev, phase: 'syncing', message: 'Syncing files from API…' }));
 

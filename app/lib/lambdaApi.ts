@@ -248,7 +248,7 @@ export interface LambdaScrapeBody {
   maxPages?: number;
   maxDepth?: number;
 
-  /** Exact pages to crawl when limiting scope (sent as `selectUrls` in JSON). */
+  /** Exact pages to crawl when limiting scope (sent as `select_urls` in JSON). */
   selectUrls?: string[];
 }
 
@@ -269,7 +269,7 @@ export async function lambdaScrape(token: string, body: LambdaScrapeBody): Promi
   }
 
   if (body.selectUrls?.length) {
-    payload.selectUrls = body.selectUrls.map((u) => u.trim()).filter(Boolean);
+    payload.select_urls = body.selectUrls.map((u) => u.trim()).filter(Boolean);
   }
 
   return fetch(migratexApiUrl('/scrape'), {
