@@ -194,9 +194,19 @@ const JobCard = memo(function JobCard({ job, supabaseCounts }: JobCardProps) {
       )}
 
       <div className="flex items-start justify-between gap-2 px-5 pt-4 pb-3 border-b border-migratex-elements-borderColor/60">
-        <h3 className="text-[15px] font-semibold text-migratex-elements-textPrimary leading-snug line-clamp-2 pr-2">
-          {job.title}
-        </h3>
+        <div className="min-w-0 pr-2">
+          <h3 className="text-[15px] font-semibold text-migratex-elements-textPrimary leading-snug line-clamp-2">
+            {job.projectName || job.title}
+          </h3>
+          {job.projectName && job.url ? (
+            <p
+              className="mt-0.5 text-[11px] font-mono text-migratex-elements-textTertiary truncate"
+              title={job.url}
+            >
+              {job.url}
+            </p>
+          ) : null}
+        </div>
         <span className="shrink-0 p-1 text-migratex-elements-textTertiary" aria-hidden>
           <span className="i-ph:star text-lg" />
         </span>
@@ -230,7 +240,7 @@ const JobCard = memo(function JobCard({ job, supabaseCounts }: JobCardProps) {
         </span>
       </div>
 
-      {job.url ? (
+      {job.projectName ? null : job.url ? (
         <p className="px-5 pb-3 text-[11px] font-mono text-migratex-elements-textTertiary truncate" title={job.url}>
           {job.url}
         </p>
@@ -366,6 +376,7 @@ export function DashboardPage() {
     if (!q) return jobs;
     return jobs.filter(
       (j) =>
+        j.projectName.toLowerCase().includes(q) ||
         j.title.toLowerCase().includes(q) ||
         j.url.toLowerCase().includes(q) ||
         j.id.toLowerCase().includes(q) ||

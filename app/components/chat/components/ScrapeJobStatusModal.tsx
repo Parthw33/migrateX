@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { classNames } from '~/utils/classNames';
 
 const HIGHLIGHT_KEYS = [
+  'project_name',
   'status',
   'state',
   'job_status',

@@ -372,6 +372,8 @@ export async function lambdaImportStack(
 export interface MigrateXScrapeJob {
   id: string;
   title: string;
+  /** Human-readable label captured on the URL step (POST /scrape `project_name`). */
+  projectName: string;
   url: string;
   status: string;
   progress: number;
@@ -407,7 +409,9 @@ function parseScrapeRow(raw: Record<string, unknown>): MigrateXScrapeJob | null 
   }
 
   const url = str(raw.url ?? raw.website_url ?? raw.websiteUrl ?? raw.source_url ?? raw.site_url);
+  const projectName = str(raw.project_name ?? raw.projectName ?? raw.projectname);
   const title =
+    projectName ||
     str(raw.name ?? raw.title ?? raw.stack_name) ||
     (url ? url.replace(/^https?:\/\//i, '').split('/')[0] || url : 'Untitled job');
   const nested = raw.counts && typeof raw.counts === 'object' ? (raw.counts as Record<string, unknown>) : null;
@@ -435,6 +439,7 @@ function parseScrapeRow(raw: Record<string, unknown>): MigrateXScrapeJob | null 
   return {
     id,
     title,
+    projectName,
     url,
     status,
     progress,
