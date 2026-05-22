@@ -248,6 +248,9 @@ export interface LambdaScrapeBody {
   maxPages?: number;
   maxDepth?: number;
 
+  /** Human-readable label entered on the URL step (sent as `project_name`). */
+  projectName?: string;
+
   /** Exact pages to crawl when limiting scope (sent as `select_urls` in JSON). */
   selectUrls?: string[];
 }
@@ -266,6 +269,10 @@ export async function lambdaScrape(token: string, body: LambdaScrapeBody): Promi
 
   if (body.maxDepth != null) {
     payload.max_depth = body.maxDepth;
+  }
+
+  if (body.projectName?.trim()) {
+    payload.project_name = body.projectName.trim();
   }
 
   if (body.selectUrls?.length) {
@@ -292,6 +299,7 @@ export async function lambdaGetScrapeJobStatus(token: string, jobId: string): Pr
 export interface ScrapeJobDetail {
   id: string;
   url: string;
+  project_name?: string | null;
   status: string;
   progress: number;
   progress_message: string | null;
@@ -324,6 +332,12 @@ export async function fetchScrapeJobDetail(
     const data: ScrapeJobDetail = {
       id,
       url: str(raw.url),
+      project_name:
+        raw.project_name != null
+          ? String(raw.project_name)
+          : raw.projectName != null
+            ? String(raw.projectName)
+            : null,
       status: str(raw.status, 'unknown'),
       progress: num(raw.progress, 0),
       progress_message: raw.progress_message != null ? String(raw.progress_message) : null,

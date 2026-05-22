@@ -29,6 +29,7 @@ function syncDashboardJobContextFromStores(detail: ScrapeJobDetail): void {
 export function applyScrapeJobDetailToMigration(detail: ScrapeJobDetail): void {
   setScrapeJobId(detail.id);
   migrationStore.setKey('websiteUrl', detail.url?.trim() || '');
+  migrationStore.setKey('projectName', detail.project_name?.trim() || '');
   migrationStore.setKey('selectUrls', []);
 
   const stackFromApi = detail.cs_stack_api_key?.trim();

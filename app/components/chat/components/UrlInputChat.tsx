@@ -43,6 +43,7 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
     },
   ]);
   const [urlInput, setUrlInput] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [maxPages, setMaxPages] = useState<number>(10);
   const [scopeMode, setScopeMode] = useState<'full' | 'specific'>('full');
   const [specificCount, setSpecificCount] = useState(3);
@@ -112,6 +113,13 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
 
     setIsValidPrimary(true);
 
+    const trimmedProjectName = projectName.trim();
+    if (!trimmedProjectName) {
+      setFormError('Enter a project name so this migration is easy to find later.');
+
+      return;
+    }
+
     let selectUrls: string[] = [];
 
     if (scopeMode === 'specific') {
@@ -154,6 +162,7 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
       setTimeout(() => {
         onSubmit({
           url: primary,
+          projectName: trimmedProjectName,
           maxPages,
           selectUrls,
         });
@@ -163,6 +172,7 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
 
   const canSubmit =
     urlInput.trim() &&
+    projectName.trim() &&
     (scopeMode === 'full' ||
       (specificUrls.slice(0, specificCount).every((s) => s.trim()) && specificCount >= MIN_SPECIFIC));
 
@@ -203,6 +213,43 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
                     </h2>
                     <p className="mt-1 text-xs leading-relaxed text-migratex-elements-textSecondary">
                       The main URL is your site entry point. Optional: restrict crawling to an explicit list of pages.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="migratex-project-name"
+                      className="text-xs font-medium text-migratex-elements-textSecondary"
+                    >
+                      Project name
+                    </label>
+                    <div
+                      className={classNames(
+                        'flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-colors shadow-sm',
+                        'bg-migratex-elements-background-depth-1/50',
+                        'border-migratex-elements-borderColor focus-within:border-violet-400/80 focus-within:ring-2 focus-within:ring-violet-500/20',
+                      )}
+                    >
+                      <span
+                        className="i-ph:folder-simple text-lg text-migratex-elements-textTertiary shrink-0"
+                        aria-hidden
+                      />
+                      <input
+                        id="migratex-project-name"
+                        type="text"
+                        value={projectName}
+                        onChange={(e) => {
+                          setProjectName(e.target.value);
+                          setFormError(null);
+                        }}
+                        placeholder="My migration"
+                        maxLength={120}
+                        className="flex-1 min-w-0 bg-transparent outline-none text-sm text-migratex-elements-textPrimary placeholder:text-migratex-elements-textTertiary"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <p className="text-[11px] text-migratex-elements-textTertiary">
+                      A short label for this migration — saved with the job for easy reference.
                     </p>
                   </div>
 

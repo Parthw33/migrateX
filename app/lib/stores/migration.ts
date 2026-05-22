@@ -7,6 +7,10 @@ export interface MigrationState {
   currentStep: MigrationStep;
   websiteUrl: string;
 
+  /** Human-readable project name entered alongside the URL on URL_INPUT. Sent to
+   *  POST /scrape as `project_name` and surfaced in dashboard listings. */
+  projectName: string;
+
   /** When set, POST /scrape includes these exact page URLs (see UrlInputChat). */
   selectUrls: string[];
 
@@ -53,6 +57,7 @@ const persisted = loadPersistedState();
 export const migrationStore = map<MigrationState>({
   currentStep: (persisted.currentStep as MigrationStep) ?? 'URL_INPUT',
   websiteUrl: persisted.websiteUrl ?? '',
+  projectName: typeof persisted.projectName === 'string' ? persisted.projectName : '',
   selectUrls: Array.isArray(persisted.selectUrls)
     ? (persisted.selectUrls as string[]).filter((u) => typeof u === 'string' && u.trim())
     : [],
@@ -95,6 +100,7 @@ function persistState() {
         JSON.stringify({
           currentStep: state.currentStep,
           websiteUrl: state.websiteUrl,
+          projectName: state.projectName,
           selectUrls: state.selectUrls,
           crawlMaxPages: state.crawlMaxPages,
           csOrganizationUid: state.csOrganizationUid,
@@ -120,6 +126,7 @@ export function resetMigrationStore() {
   migrationStore.set({
     currentStep: 'URL_INPUT',
     websiteUrl: '',
+    projectName: '',
     selectUrls: [],
     crawlMaxPages: 20,
     csOrganizationUid: '',

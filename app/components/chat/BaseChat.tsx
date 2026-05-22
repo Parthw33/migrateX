@@ -185,7 +185,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       }
 
       try {
-        const { selectUrls } = migrationStore.get();
+        const { selectUrls, projectName } = migrationStore.get();
         const response = await lambdaScrape(token, {
           url: crawlUrl,
           cs_stack_api_key: stackUid.trim(),
@@ -193,6 +193,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           cs_region: csRegion,
           maxPages,
           maxDepth: 4,
+          ...(projectName?.trim() ? { projectName: projectName.trim() } : {}),
           ...(selectUrls?.length ? { selectUrls } : {}),
         });
 
@@ -354,9 +355,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     };
 
     const handleUrlSubmit = (payload: UrlSubmitPayload) => {
-      const { url, maxPages, selectUrls } = payload;
+      const { url, maxPages, selectUrls, projectName } = payload;
 
       migrationStore.setKey('websiteUrl', url);
+      migrationStore.setKey('projectName', projectName ?? '');
       migrationStore.setKey('crawlMaxPages', maxPages > 0 ? maxPages : migrationStore.get().crawlMaxPages);
       migrationStore.setKey('selectUrls', selectUrls);
 
@@ -364,7 +366,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       setInternalScrapingLogs([]);
 
       if (onUrlSubmit) {
-        onUrlSubmit(url, { maxPages, selectUrls });
+        onUrlSubmit(url, { maxPages, selectUrls, projectName });
       }
     };
 

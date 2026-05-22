@@ -40,6 +40,8 @@ export interface ChatMessageData {
 /** Values from the URL step before stack setup / scrape. */
 export interface UrlSubmitPayload {
   url: string;
+  /** Human-readable label for this migration job (sent as `project_name`). */
+  projectName: string;
   maxPages: number;
   /** Non-empty only when the user chose “specific URLs” crawl scope. */
   selectUrls: string[];
@@ -62,7 +64,7 @@ export interface BaseChatProps {
   enhancePrompt?: () => void;
   onUrlSubmit?: (
     url: string,
-    options?: { maxPages: number; selectUrls?: string[] },
+    options?: { maxPages: number; selectUrls?: string[]; projectName?: string },
   ) => void;
   scrapingLogs?: ScrapingLog[];
   isScrapingComplete?: boolean;
@@ -88,6 +90,7 @@ export interface MigrationLog {
 export interface PersistedMigrationState {
   currentStep: MigrationStep;
   websiteUrl: string;
+  projectName?: string;
   selectUrls?: string[];
   crawlMaxPages?: number;
   isScrapingComplete: boolean;
