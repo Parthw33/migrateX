@@ -58,6 +58,7 @@ export class EditorStore {
         value: dirent.content,
         filePath,
         scroll: previous?.scroll,
+        isBinary: dirent.isBinary,
       };
       mutated = true;
     }
