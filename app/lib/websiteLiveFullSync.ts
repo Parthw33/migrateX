@@ -24,6 +24,13 @@ async function parseLiveResponseBody(res: Response): Promise<{ data: unknown }> 
 export interface WebsiteLiveFullSyncOptions {
   seedManifestPaths?: string[];
   onPath?: (relPath: string) => void;
+  /**
+   * Polled between every per-file iteration. Return true to abort the sync
+   * mid-loop — the caller (typically a React effect cleanup) uses this to
+   * stop the dozens of `?file=` requests that would otherwise keep firing
+   * after the user navigates away from the workbench.
+   */
+  isCancelled?: () => boolean;
 }
 
 /**
@@ -43,13 +50,21 @@ export async function runWebsiteLiveFullSync(
 
   let manifestPaths = [...(options?.seedManifestPaths ?? [])];
 
+  const isCancelled = () => options?.isCancelled?.() === true;
+
   const res = await lambdaFetchWebsiteLive(token, id);
+  if (isCancelled()) {
+    return { mergedManifestPaths: manifestPaths, syncedPathCount: 0 };
+  }
   const { data } = await parseLiveResponseBody(res);
+  if (isCancelled()) {
+    return { mergedManifestPaths: manifestPaths, syncedPathCount: 0 };
+  }
   const parsed = parseWebsiteLivePayload(data);
 
   // Ingest the initial /live response's inline content first so the
   // workbench gets at least one file as soon as the sync starts.
-  if (Object.keys(parsed.fileMap).length > 0) {
+  if (Object.keys(parsed.fileMap).length > 0 && !isCancelled()) {
     await workbenchStore.ingestWebsiteFiles(parsed.fileMap);
   }
 
@@ -83,6 +98,9 @@ export async function runWebsiteLiveFullSync(
   };
 
   for (const relPath of paths) {
+    if (isCancelled()) {
+      break;
+    }
     if (isAlreadyLoaded(relPath)) {
       continue;
     }
@@ -91,7 +109,13 @@ export async function runWebsiteLiveFullSync(
 
     try {
       const fres = await lambdaFetchWebsiteLive(token, id, { file: relPath });
+      if (isCancelled()) {
+        break;
+      }
       const { data: fdata } = await parseLiveResponseBody(fres);
+      if (isCancelled()) {
+        break;
+      }
       const fparsed = parseWebsiteLivePayload(fdata);
 
       if (Object.keys(fparsed.fileMap).length > 0) {
@@ -106,7 +130,9 @@ export async function runWebsiteLiveFullSync(
     }
   }
 
-  workbenchStore.setDocuments(workbenchStore.files.get());
+  if (!isCancelled()) {
+    workbenchStore.setDocuments(workbenchStore.files.get());
+  }
 
   return { mergedManifestPaths: paths, syncedPathCount: paths.length };
 }

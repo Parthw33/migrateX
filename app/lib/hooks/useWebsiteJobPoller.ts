@@ -71,6 +71,14 @@ export function useWebsiteJobPoller(jobId: string | null) {
     lastFilesReadySyncAtRef.current = 0;
     lastFilesReadyCountRef.current = 0;
 
+    // Local cancellation flag. The cleanup below sets it; the in-flight
+    // `poll()` and `scheduleNext()` both check it before touching state or
+    // queueing more work — otherwise a poll that resolves AFTER unmount
+    // (e.g. user navigated back to /dashboard) would still call
+    // `scheduleNext`, install a new timer the cleanup never sees, and keep
+    // polling Supabase forever.
+    let cancelled = false;
+
     const sb = getSupabaseClient();
     if (!sb) {
       websiteChat.addStatus('Supabase not configured — website_url tracking unavailable.', 'warning');
@@ -78,6 +86,9 @@ export function useWebsiteJobPoller(jobId: string | null) {
     }
 
     async function poll() {
+      if (cancelled) {
+        return;
+      }
       if (pollsRef.current >= MAX_POLLS) {
         websiteChat.addStatus('Job monitoring timed out. Wait for the generation to complete.', 'warning');
         return;
@@ -85,6 +96,10 @@ export function useWebsiteJobPoller(jobId: string | null) {
       pollsRef.current += 1;
 
       const { data, error } = await sb!.from('jobs').select('*').eq('id', jobId).maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
 
       if (error) {
         console.warn('[JobPoller]', error.message);
@@ -203,6 +218,7 @@ export function useWebsiteJobPoller(jobId: string | null) {
     }
 
     function scheduleNext() {
+      if (cancelled) return;
       timerRef.current = setTimeout(() => void poll(), POLL_MS);
     }
 
@@ -210,6 +226,7 @@ export function useWebsiteJobPoller(jobId: string | null) {
     timerRef.current = setTimeout(() => void poll(), 1000);
 
     return () => {
+      cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [jobId]);

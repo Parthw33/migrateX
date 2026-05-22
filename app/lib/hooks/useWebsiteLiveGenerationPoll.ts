@@ -275,6 +275,9 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
               seedManifestPaths: [...lastManifestPathsRef.current],
               onPath: (relPath) =>
                 setStatus((prev) => ({ ...prev, currentFile: relPath, message: `Sync: ${relPath}` })),
+              // Abort the per-file fetch loop the instant the polling
+              // effect unmounts (user navigated away).
+              isCancelled: () => cancelled || stopped,
             });
             lastManifestPathsRef.current = mergedManifestPaths;
           } catch (syncErr) {
@@ -530,6 +533,10 @@ export function useWebsiteLiveGenerationPoll(appToken: string | null): UseWebsit
               setStatus((prev) => ({ ...prev, currentFile: relPath, message: `Sync: ${relPath}` }));
             }
           },
+          // Stops the per-file `?file=` request loop the moment the route
+          // unmounts (e.g. user clicks back to /dashboard). Without this
+          // the sync keeps hitting the API for the next 30+ seconds.
+          isCancelled: () => cancelled,
         });
 
         lastManifestPathsRef.current = mergedManifestPaths;
