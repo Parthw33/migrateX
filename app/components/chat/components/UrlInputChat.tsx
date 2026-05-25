@@ -143,10 +143,17 @@ export const UrlInputChat: React.FC<UrlInputChatProps> = ({ onSubmit }) => {
     const specificPagesWord = selectUrls.length === 1 ? 'page' : 'pages';
     const summary =
       scopeMode === 'specific'
-        ? `Perfect. I'll queue **${selectUrls.length}** specific ${specificPagesWord} for **${primary}**, then continue to stack setup.`
-        : `Great! I'll crawl **${primary}** (up to **${maxPages}** linked pages). Next, you'll connect your Contentstack stack.`;
+        ? `Perfect — project **${trimmedProjectName}** will queue **${selectUrls.length}** specific ${specificPagesWord} from **${primary}**, then continue to stack setup.`
+        : `Great! Project **${trimmedProjectName}** will crawl **${primary}** (up to **${maxPages}** linked pages). Next, you'll connect your Contentstack stack.`;
 
-    setMessages((prev) => [...prev, { role: 'user', content: primary, timestamp: new Date() }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: `**${trimmedProjectName}** — ${primary}`,
+        timestamp: new Date(),
+      },
+    ]);
 
     setTimeout(() => {
       setMessages((prev) => [

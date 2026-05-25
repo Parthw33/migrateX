@@ -204,10 +204,12 @@ export interface LambdaLocale {
   fallback_locale?: string | null;
 }
 
-/** GET /locales — returns all Contentstack locales available to the authed user. */
+/** GET /locales?include_all=true — returns all Contentstack locales the user's
+ *  authed account can see (mirrors the `?include_all=true&r=…` call the
+ *  Contentstack web app fires when populating the master-locale picker). */
 export async function lambdaListLocales(token: string): Promise<LambdaLocale[]> {
   try {
-    const res = await fetch(migratexApiUrl('/locales'), {
+    const res = await fetch(migratexApiUrl('/locales?include_all=true'), {
       headers: authHeaders(token),
     });
     const data = await res.json().catch(() => ({}));

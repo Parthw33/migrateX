@@ -4,6 +4,7 @@ import { useStore } from '@nanostores/react';
 import { classNames } from '~/utils/classNames';
 import type { ChatMessageData } from '~/components/chat/types';
 import { authStore } from '~/lib/stores/auth';
+import { migrationStore } from '~/lib/stores/migration';
 import {
   lambdaCreateStack,
   lambdaListOrganizations,
@@ -31,11 +32,16 @@ export interface StackSetupStepProps {
 
 export const StackSetupStep: React.FC<StackSetupStepProps> = ({ websiteUrl, onBack, onContinue }) => {
   const { appToken, region: authRegion, isAuthenticated } = useStore(authStore);
+  const projectName = useStore(migrationStore).projectName;
+
+  const projectIntro = projectName?.trim()
+    ? `Project **${projectName.trim()}** — migrating **${websiteUrl}**.`
+    : `You’re migrating **${websiteUrl}**.`;
 
   const [messages, setMessages] = useState<ChatMessageData[]>([
     {
       role: 'assistant',
-      content: `You’re migrating **${websiteUrl}**.\n\nChoose a **Contentstack organization** and **stack** (or create a new stack), then use **Start scraping** to run the crawl (**POST /scrape**).`,
+      content: `${projectIntro}\n\nChoose a **Contentstack organization** and **stack** (or create a new stack), then use **Start scraping** to run the crawl (**POST /scrape**).`,
       timestamp: new Date(),
       animate: true,
     },
@@ -378,7 +384,27 @@ export const StackSetupStep: React.FC<StackSetupStepProps> = ({ websiteUrl, onBa
                   <Dialog.Root open={createModalOpen} onOpenChange={setCreateModalOpen}>
                     <Dialog.Portal>
                       <Dialog.Overlay className="fixed inset-0 z-[250] bg-black/50 data-[state=open]:animate-in fade-in-0" />
-                      <Dialog.Content className="fixed left-1/2 top-1/2 z-[251] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-migratex-elements-borderColor bg-migratex-elements-background-depth-1 p-6 shadow-xl focus:outline-none data-[state=open]:animate-in fade-in-0 zoom-in-95">
+                      <Dialog.Content
+                        // Don't dismiss the dialog when the user clicks inside
+                        // the LocaleSelect dropdown (rendered via a separate
+                        // portal). Without this, clicking a locale option fires
+                        // onPointerDownOutside → Dialog closes → the dropdown
+                        // unmounts before its onClick can run, so nothing
+                        // appears to happen.
+                        onPointerDownOutside={(event) => {
+                          const target = event.target as HTMLElement | null;
+                          if (target?.closest('[data-locale-dropdown]')) {
+                            event.preventDefault();
+                          }
+                        }}
+                        onInteractOutside={(event) => {
+                          const target = event.target as HTMLElement | null;
+                          if (target?.closest('[data-locale-dropdown]')) {
+                            event.preventDefault();
+                          }
+                        }}
+                        className="fixed left-1/2 top-1/2 z-[251] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-migratex-elements-borderColor bg-migratex-elements-background-depth-1 p-6 shadow-xl focus:outline-none data-[state=open]:animate-in fade-in-0 zoom-in-95"
+                      >
                         <Dialog.Title className="text-lg font-semibold text-migratex-elements-textPrimary">
                           Create new stack
                         </Dialog.Title>

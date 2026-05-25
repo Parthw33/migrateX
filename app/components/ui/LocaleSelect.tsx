@@ -217,6 +217,12 @@ export function LocaleSelect({ value, onChange, localesResult, disabled, classNa
         ? createPortal(
             <div
               ref={dropRef}
+              // Tagged so a surrounding Radix Dialog can recognise pointer
+              // events that happen inside this portal and skip its
+              // "click outside → close dialog" behaviour. Without this the
+              // dialog closes the moment the user clicks an option and the
+              // option's onClick never gets a chance to fire.
+              data-locale-dropdown=""
               style={{ position: 'fixed', top: rect.top, left: rect.left, width: rect.width, zIndex: 320 }}
               className="flex flex-col overflow-hidden rounded-xl border border-migratex-elements-borderColor bg-white shadow-xl shadow-black/10 ring-1 ring-black/5"
             >
