@@ -86,6 +86,26 @@ export interface PendingDiff {
 /** When set, the workbench renders Monaco's DiffEditor for this file. */
 export const pendingDiffStore = atom<PendingDiff | null>(null);
 
+/* ── Editor reveal-and-select bus ─────────────────────────────────────────── */
+
+export interface EditorRevealRequest {
+  filePath: string;
+  /** 1-indexed line. */
+  line: number;
+  /** 1-indexed column where the selection should start. */
+  column: number;
+  /** Number of characters to select starting at column. 0 = caret only. */
+  length: number;
+  /** Bumped on every call so the consumer can re-react even when the
+   *  target coordinates didn't change. */
+  version: number;
+}
+
+/** Latest reveal request — Monaco subscribes and jumps the cursor when this
+ *  changes. We use a single atom (not a queue) because each request supersedes
+ *  the previous one. */
+export const editorRevealStore = atom<EditorRevealRequest | null>(null);
+
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
 export const editorTabs = {
@@ -168,6 +188,27 @@ export const editorTabs = {
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     editorTabsStore.setKey('tabs', next);
+  },
+
+  /**
+   * Reveal `line:column` in the Monaco editor for `filePath`, optionally
+   * highlighting the next `length` characters as a selection. Used by the
+   * find-in-files panel so clicking a match scrolls the editor to the hit
+   * AND drops the cursor inside it (with the match selected), the same way
+   * VSCode's search-result click behaves.
+   */
+  reveal(filePath: string, line: number, column: number, length = 0) {
+    const prev = editorRevealStore.get();
+    editorRevealStore.set({
+      filePath,
+      line,
+      column,
+      length,
+      version: (prev?.version ?? 0) + 1,
+    });
+    // Also update the cached view state so the position is restored when the
+    // user closes / re-opens the tab later.
+    editorTabs.setViewState(filePath, { line, column });
   },
 };
 

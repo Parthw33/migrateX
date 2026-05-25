@@ -10,12 +10,12 @@
  *   • Theme follows the existing themeStore (light → 'vs', dark → 'vs-dark').
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Editor, type Monaco, type OnMount, type OnChange } from '@monaco-editor/react';
 import type { editor as MonacoEditorNS } from 'monaco-editor';
 import { useStore } from '@nanostores/react';
 import { themeStore } from '~/lib/stores/theme';
-import { editorTabs, editorTabsStore } from '~/lib/stores/editorTabs';
+import { editorRevealStore, editorTabs, editorTabsStore } from '~/lib/stores/editorTabs';
 import { languageForPath } from '~/lib/editor/monacoLanguage';
 import { cn } from '~/lib/utils';
 
@@ -32,17 +32,75 @@ interface MonacoEditorProps {
 export function MonacoEditor({ filePath, value, readOnly, className, onChange, onSave, onMount }: MonacoEditorProps) {
   const theme = useStore(themeStore);
   const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
+  const revealRequest = useStore(editorRevealStore);
+
+  // Apply any pending reveal request whenever it bumps for this file. The
+  // find-in-files panel sets it on click; on first paint we also honour it
+  // (so the match is in view immediately after the editor mounts).
+  useEffect(() => {
+    if (!revealRequest || revealRequest.filePath !== filePath) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const startLine = revealRequest.line;
+    const startCol = revealRequest.column;
+    const endCol = revealRequest.length > 0 ? startCol + revealRequest.length : startCol;
+
+    if (revealRequest.length > 0) {
+      editor.setSelection({
+        startLineNumber: startLine,
+        startColumn: startCol,
+        endLineNumber: startLine,
+        endColumn: endCol,
+      });
+    } else {
+      editor.setPosition({ lineNumber: startLine, column: startCol });
+    }
+    editor.revealRangeInCenterIfOutsideViewport({
+      startLineNumber: startLine,
+      startColumn: startCol,
+      endLineNumber: startLine,
+      endColumn: endCol,
+    });
+    editor.focus();
+  }, [revealRequest, filePath]);
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
 
-    // Restore cached view state for this tab.
-    const tab = editorTabsStore.get().tabs.find((t) => t.filePath === filePath);
-    if (tab?.viewState?.line) {
-      editor.setPosition({ lineNumber: tab.viewState.line, column: tab.viewState.column ?? 1 });
-      editor.revealLineInCenter(tab.viewState.line);
-    } else if (tab?.viewState?.scroll) {
-      editor.setScrollPosition({ scrollTop: tab.viewState.scroll.top, scrollLeft: tab.viewState.scroll.left });
+    // If a reveal request for this file is already pending (e.g. the user
+    // just clicked a search result and the editor is mounting fresh),
+    // honour it first — it overrides the tab's cached view state.
+    const pending = editorRevealStore.get();
+    if (pending && pending.filePath === filePath) {
+      const startLine = pending.line;
+      const startCol = pending.column;
+      const endCol = pending.length > 0 ? startCol + pending.length : startCol;
+      if (pending.length > 0) {
+        editor.setSelection({
+          startLineNumber: startLine,
+          startColumn: startCol,
+          endLineNumber: startLine,
+          endColumn: endCol,
+        });
+      } else {
+        editor.setPosition({ lineNumber: startLine, column: startCol });
+      }
+      editor.revealRangeInCenter({
+        startLineNumber: startLine,
+        startColumn: startCol,
+        endLineNumber: startLine,
+        endColumn: endCol,
+      });
+    } else {
+      // Otherwise restore cached view state for this tab.
+      const tab = editorTabsStore.get().tabs.find((t) => t.filePath === filePath);
+      if (tab?.viewState?.line) {
+        editor.setPosition({ lineNumber: tab.viewState.line, column: tab.viewState.column ?? 1 });
+        editor.revealLineInCenter(tab.viewState.line);
+      } else if (tab?.viewState?.scroll) {
+        editor.setScrollPosition({ scrollTop: tab.viewState.scroll.top, scrollLeft: tab.viewState.scroll.left });
+      }
     }
 
     editor.onDidChangeCursorPosition((e) => {

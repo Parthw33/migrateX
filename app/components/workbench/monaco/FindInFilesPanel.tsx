@@ -172,7 +172,6 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
   }, [results]);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [activeMatch, setActiveMatch] = useState<string | null>(null);
 
   const toggleCollapsed = (path: string) =>
     setCollapsed((prev) => {
@@ -183,10 +182,11 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
     });
 
   const openMatch = (m: Match) => {
-    setActiveMatch(`${m.filePath}:${m.line}:${m.column}`);
     editorTabs.open(m.filePath);
-    editorTabs.setViewState(m.filePath, { line: m.line, column: m.column });
     workbenchStore.setSelectedFile(m.filePath);
+    // Jump the live Monaco editor to line:col AND select the matched
+    // substring — same behaviour as VSCode's search-result click.
+    editorTabs.reveal(m.filePath, m.line, m.column, m.length);
   };
 
   const fileCount = groups.length;
@@ -317,19 +317,13 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
                   <div className="mb-0.5 ml-2 border-l border-migratex-elements-borderColor/70 pl-2">
                     {matches.map((m) => {
                       const key = `${m.filePath}:${m.line}:${m.column}`;
-                      const isActive = activeMatch === key;
                       return (
                         <button
                           type="button"
                           key={key}
                           onClick={() => openMatch(m)}
                           title={`${relativePath(m.filePath)}:${m.line}:${m.column}`}
-                          className={cn(
-                            'flex w-full items-baseline gap-2 rounded px-1.5 py-[3px] text-left transition-colors',
-                            isActive
-                              ? 'bg-violet-100 dark:bg-violet-900/30'
-                              : 'hover:bg-migratex-elements-background-depth-3',
-                          )}
+                          className="flex w-full items-baseline gap-2 rounded px-1.5 py-[3px] text-left transition-colors hover:bg-migratex-elements-background-depth-3"
                         >
                           <span className="w-7 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-migratex-elements-textTertiary">
                             {m.line}
