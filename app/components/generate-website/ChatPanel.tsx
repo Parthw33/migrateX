@@ -25,7 +25,6 @@ import { ArrowUp, FilePlus, FolderSync, Globe, ListChecks, RefreshCw, Sparkles }
 
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
-import { ScrollArea } from '~/components/ui/scroll-area';
 import { Textarea } from '~/components/ui/textarea';
 
 import { authStore } from '~/lib/stores/auth';
@@ -113,7 +112,7 @@ function PipelineMessageRow({ msg }: { msg: ChatMessage }) {
   // AI / user pipeline messages — render with Streamdown for Markdown.
   const isUser = msg.role === 'user';
   return (
-    <div className={cn('flex min-w-0 gap-2.5 px-3 py-1.5', isUser && 'justify-end')}>
+    <div className={cn('flex w-full min-w-0 gap-2.5 px-3 py-1.5', isUser && 'justify-end')}>
       {!isUser && (
         <div
           className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
@@ -124,18 +123,13 @@ function PipelineMessageRow({ msg }: { msg: ChatMessage }) {
       )}
       <div
         className={cn(
-          'min-w-0 max-w-[88%] rounded-xl px-3 py-2 text-[13px] leading-relaxed shadow-sm',
+          'min-w-0 max-w-[calc(100%-2.75rem)] flex-shrink rounded-xl px-3 py-2 shadow-sm',
           isUser
-            ? 'rounded-tr-md bg-violet-600 text-white'
+            ? 'max-w-[calc(100%-0.5rem)] rounded-tr-md bg-violet-600 text-white'
             : 'rounded-tl-sm border border-migratex-elements-borderColor/70 bg-migratex-elements-background-depth-2 text-migratex-elements-textPrimary dark:bg-[#161b22]',
         )}
       >
-        <Streamdown
-          className={cn(
-            'prose prose-sm max-w-none break-words [overflow-wrap:anywhere]',
-            isUser ? 'prose-invert' : 'dark:prose-invert',
-          )}
-        >
+        <Streamdown className={cn('chat-md', isUser && 'chat-md--invert')}>
           {msg.content}
         </Streamdown>
       </div>
@@ -155,7 +149,7 @@ function StreamingMessage({ msg }: { msg: UseChatMessage }) {
   if (msg.role === 'system' || msg.role === 'data') return null;
   const isUser = msg.role === 'user';
   return (
-    <div className={cn('flex min-w-0 gap-2.5 px-3 py-1.5', isUser && 'justify-end')}>
+    <div className={cn('flex w-full min-w-0 gap-2.5 px-3 py-1.5', isUser && 'justify-end')}>
       {!isUser && (
         <div
           className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 text-white shadow-sm ring-1 ring-black/5"
@@ -166,18 +160,13 @@ function StreamingMessage({ msg }: { msg: UseChatMessage }) {
       )}
       <div
         className={cn(
-          'min-w-0 max-w-[88%] rounded-xl px-3 py-2 text-[13px] leading-relaxed shadow-sm',
+          'min-w-0 max-w-[calc(100%-2.75rem)] flex-shrink rounded-xl px-3 py-2 shadow-sm',
           isUser
-            ? 'rounded-tr-md bg-violet-600 text-white'
+            ? 'max-w-[calc(100%-0.5rem)] rounded-tr-md bg-violet-600 text-white'
             : 'rounded-tl-sm border border-migratex-elements-borderColor/70 bg-migratex-elements-background-depth-2 text-migratex-elements-textPrimary dark:bg-[#161b22]',
         )}
       >
-        <Streamdown
-          className={cn(
-            'prose prose-sm max-w-none break-words [overflow-wrap:anywhere]',
-            isUser ? 'prose-invert' : 'dark:prose-invert',
-          )}
-        >
+        <Streamdown className={cn('chat-md', isUser && 'chat-md--invert')}>
           {msg.content}
         </Streamdown>
       </div>
@@ -452,12 +441,19 @@ export const ChatPanel = memo(({ generationStatus }: ChatPanelProps) => {
         genPhase={generationStatus?.phase ?? 'idle'}
       />
 
-      {/* Thread */}
-      <ScrollArea className="min-h-0 min-w-0 flex-1" ref={scrollRef as React.Ref<HTMLDivElement>}>
+      {/* Thread — plain overflow-y-auto rather than Radix ScrollArea so the
+       *  flex children can shrink below their natural width. Radix wraps the
+       *  viewport contents in a `display: table` block which would force the
+       *  messages out to natural width and break wrapping on narrow panels. */}
+      <div
+        ref={scrollRef}
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
+        style={{ overscrollBehavior: 'contain' }}
+      >
         {!hasAnyContent ? (
           <EmptyState />
         ) : (
-          <div className="flex min-w-0 flex-col gap-0.5 py-2">
+          <div className="flex w-full min-w-0 flex-col gap-0.5 py-2">
             {/* Pipeline feed (file activities, statuses, AI messages from useGenerationChatBridge). */}
             {chatState.messages.map((m) => (
               <PipelineMessageRow key={m.id} msg={m} />
@@ -480,7 +476,7 @@ export const ChatPanel = memo(({ generationStatus }: ChatPanelProps) => {
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Composer */}
       <CardContent className="flex-shrink-0 border-t border-migratex-elements-borderColor/80 bg-migratex-elements-background-depth-1 p-3">
