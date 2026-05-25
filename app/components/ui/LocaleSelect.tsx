@@ -223,7 +223,27 @@ export function LocaleSelect({ value, onChange, localesResult, disabled, classNa
               // dialog closes the moment the user clicks an option and the
               // option's onClick never gets a chance to fire.
               data-locale-dropdown=""
-              style={{ position: 'fixed', top: rect.top, left: rect.left, width: rect.width, zIndex: 320 }}
+              // Belt-and-braces: stop pointer/mouse events from bubbling out
+              // of the dropdown's portal. Radix DismissableLayer listens at
+              // document level, so React's stopPropagation alone isn't enough
+              // — we also stopImmediatePropagation on the native event so
+              // any document-level capture listeners get bypassed.
+              onPointerDownCapture={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onMouseDownCapture={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              style={{
+                position: 'fixed',
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                zIndex: 320,
+                pointerEvents: 'auto',
+              }}
               className="flex flex-col overflow-hidden rounded-xl border border-migratex-elements-borderColor bg-white shadow-xl shadow-black/10 ring-1 ring-black/5"
             >
               {/* Search bar */}
@@ -274,9 +294,27 @@ export function LocaleSelect({ value, onChange, localesResult, disabled, classNa
                             ? 'bg-violet-50 font-medium text-violet-900'
                             : 'text-migratex-elements-textPrimary hover:bg-migratex-elements-background-depth-2',
                         )}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
+                        // Run the selection on mousedown rather than click.
+                        // When this dropdown lives inside a Radix Dialog (modal),
+                        // Radix's DismissableLayer intercepts pointerdown to
+                        // detect outside clicks — the dialog can close fast
+                        // enough that the synthesised pointerdown → click
+                        // sequence never reaches this <li>. Acting on mousedown
+                        // sidesteps the race entirely.
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           onChange(opt.value);
+                          close();
+                        }}
+                        // Click is a safety net for keyboard / assistive
+                        // technologies that synthesise click without firing
+                        // mousedown first.
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (opt.value !== value) {
+                            onChange(opt.value);
+                          }
                           close();
                         }}
                       >
