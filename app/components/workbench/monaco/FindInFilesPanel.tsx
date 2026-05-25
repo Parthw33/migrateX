@@ -5,13 +5,26 @@
  * workbenchStore.files and groups matches by file. Clicking a match opens the
  * file in a new tab and jumps to the matched line in the editor.
  *
- * Backed entirely by client-side in-memory file content — there's no server
- * round-trip. For large manifests the search is debounced.
+ * Visual style mirrors VSCode's primary sidebar search:
+ *   • Quiet search input with inline modifier toggles (Aa / whole-word / .*)
+ *   • File group: chevron · filename + folder hint · count chip
+ *   • Match row: line number · trimmed preview with the matched substring
+ *     highlighted in violet
+ *   • Active match (last clicked) is persistently highlighted
  */
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { Search, X, ChevronDown, ChevronRight, Regex, CaseSensitive } from 'lucide-react';
+import {
+  CaseSensitive,
+  ChevronDown,
+  ChevronRight,
+  File as FileIcon,
+  Regex,
+  Search,
+  WholeWord,
+  X,
+} from 'lucide-react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { editorTabs } from '~/lib/stores/editorTabs';
 import { WORK_DIR } from '~/utils/constants';
@@ -22,11 +35,69 @@ interface Match {
   filePath: string;
   line: number;
   column: number;
+  /** Length of the matched substring in `text` starting at `column-1`. */
+  length: number;
+  /** Raw line text — preserved verbatim so the highlight indices are valid. */
   text: string;
+}
+
+interface MatchGroup {
+  filePath: string;
+  matches: Match[];
 }
 
 const MAX_RESULTS = 500;
 const MAX_FILES = 5000;
+const PREVIEW_MAX_LEAD = 40; // chars of context before the match in the preview
+
+function basename(path: string): string {
+  return path.split('/').pop() || path;
+}
+
+function relativeFolder(path: string): string {
+  const stripped = path.startsWith(WORK_DIR + '/') ? path.slice(WORK_DIR.length + 1) : path;
+  const parts = stripped.split('/');
+  parts.pop();
+  return parts.join('/') || '';
+}
+
+function relativePath(path: string): string {
+  return path.startsWith(WORK_DIR + '/') ? path.slice(WORK_DIR.length + 1) : path;
+}
+
+/** Renders the line preview, highlighting the matched substring. */
+function MatchPreview({ text, column, length }: { text: string; column: number; length: number }) {
+  // VSCode trims long leading whitespace and shows '…' so the match isn't
+  // pushed off-screen.
+  const matchStart = Math.max(0, column - 1);
+  const matchEnd = matchStart + length;
+
+  let displayStart = 0;
+  let prefix = '';
+  if (matchStart > PREVIEW_MAX_LEAD) {
+    displayStart = matchStart - PREVIEW_MAX_LEAD;
+    prefix = '…';
+  }
+
+  // Trim leading whitespace only when we didn't already truncate.
+  const visibleSegment = displayStart === 0 ? text.replace(/^\s+/, (m) => (m.length > 4 ? '' : m)) : text.slice(displayStart);
+  const trimmedOffset = displayStart === 0 ? text.length - visibleSegment.length : displayStart;
+
+  const before = visibleSegment.slice(0, Math.max(0, matchStart - trimmedOffset));
+  const matched = visibleSegment.slice(Math.max(0, matchStart - trimmedOffset), Math.max(0, matchEnd - trimmedOffset));
+  const after = visibleSegment.slice(Math.max(0, matchEnd - trimmedOffset));
+
+  return (
+    <span className="block min-w-0 truncate font-mono text-[11.5px] leading-snug">
+      {prefix && <span className="text-migratex-elements-textTertiary">{prefix}</span>}
+      <span className="text-migratex-elements-textSecondary">{before}</span>
+      <span className="rounded-[3px] bg-violet-500/25 px-[1px] text-violet-900 dark:text-violet-100">
+        {matched}
+      </span>
+      <span className="text-migratex-elements-textSecondary">{after}</span>
+    </span>
+  );
+}
 
 export const FindInFilesPanel = memo(function FindInFilesPanel({
   onClose,
@@ -39,6 +110,7 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
 
   const [rawQuery, setRawQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const query = useDebounce(rawQuery, 180);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,16 +119,18 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
     inputRef.current?.focus();
   }, []);
 
-  const results: Match[] = useMemo(() => {
+  const { results, regexError } = useMemo<{ results: Match[]; regexError: string | null }>(() => {
     const q = query;
-    if (!q) return [];
+    if (!q) return { results: [], regexError: null };
+
     let pattern: RegExp;
     try {
-      pattern = useRegex
-        ? new RegExp(q, caseSensitive ? 'g' : 'gi')
-        : new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'g' : 'gi');
-    } catch {
-      return [];
+      const flags = caseSensitive ? 'g' : 'gi';
+      const escaped = useRegex ? q : q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const wrapped = wholeWord ? `\\b(?:${escaped})\\b` : escaped;
+      pattern = new RegExp(wrapped, flags);
+    } catch (err) {
+      return { results: [], regexError: err instanceof Error ? err.message : 'Invalid regular expression' };
     }
 
     const out: Match[] = [];
@@ -72,26 +146,34 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
         pattern.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = pattern.exec(line))) {
-          out.push({ filePath: path, line: i + 1, column: m.index + 1, text: line });
+          out.push({
+            filePath: path,
+            line: i + 1,
+            column: m.index + 1,
+            length: m[0].length || 1,
+            text: line,
+          });
           if (m.index === pattern.lastIndex) pattern.lastIndex++;
-          if (out.length >= MAX_RESULTS) return out;
+          if (out.length >= MAX_RESULTS) return { results: out, regexError: null };
         }
       }
     }
-    return out;
-  }, [files, query, caseSensitive, useRegex]);
+    return { results: out, regexError: null };
+  }, [files, query, caseSensitive, wholeWord, useRegex]);
 
-  const grouped = useMemo(() => {
+  const groups: MatchGroup[] = useMemo(() => {
     const map = new Map<string, Match[]>();
     for (const m of results) {
       const arr = map.get(m.filePath);
       if (arr) arr.push(m);
       else map.set(m.filePath, [m]);
     }
-    return [...map.entries()];
+    return [...map.entries()].map(([filePath, matches]) => ({ filePath, matches }));
   }, [results]);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [activeMatch, setActiveMatch] = useState<string | null>(null);
+
   const toggleCollapsed = (path: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -101,94 +183,161 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
     });
 
   const openMatch = (m: Match) => {
+    setActiveMatch(`${m.filePath}:${m.line}:${m.column}`);
     editorTabs.open(m.filePath);
     editorTabs.setViewState(m.filePath, { line: m.line, column: m.column });
     workbenchStore.setSelectedFile(m.filePath);
   };
 
-  const rel = (p: string) => (p.startsWith(WORK_DIR + '/') ? p.slice(WORK_DIR.length + 1) : p);
+  const fileCount = groups.length;
+  const resultCount = results.length;
 
   return (
-    <div className={cn('flex h-full w-full flex-col bg-migratex-elements-background-depth-2', className)}>
+    <div
+      className={cn(
+        'flex h-full w-full flex-col bg-migratex-elements-background-depth-2',
+        className,
+      )}
+    >
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-shrink-0 items-center justify-between border-b border-migratex-elements-borderColor px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-migratex-elements-textSecondary">
-        <span>Search</span>
+        <span className="flex items-center gap-1.5">
+          <Search className="size-3.5" aria-hidden />
+          Search
+        </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close search panel"
-          className="rounded p-0.5 hover:bg-migratex-elements-background-depth-3 hover:text-migratex-elements-textPrimary"
+          className="flex size-5 items-center justify-center rounded text-migratex-elements-textTertiary transition-colors hover:bg-migratex-elements-background-depth-3 hover:text-migratex-elements-textPrimary"
         >
           <X className="size-3.5" />
         </button>
       </div>
 
-      <div className="flex flex-shrink-0 flex-col gap-1.5 px-3 py-2">
-        <div className="flex items-center gap-1 rounded border border-migratex-elements-borderColor bg-migratex-elements-background-depth-1 px-2 py-1.5 focus-within:border-violet-400/80 focus-within:ring-1 focus-within:ring-violet-500/30">
-          <Search className="size-3.5 shrink-0 text-migratex-elements-textTertiary" aria-hidden />
+      {/* ── Search input row ───────────────────────────────────────────── */}
+      <div className="flex flex-shrink-0 flex-col gap-1.5 px-3 py-2.5">
+        <div
+          className={cn(
+            'group flex items-center gap-1.5 rounded-md border bg-migratex-elements-background-depth-1 px-2 py-1.5 transition-colors',
+            regexError
+              ? 'border-red-300 focus-within:border-red-400'
+              : 'border-migratex-elements-borderColor focus-within:border-violet-400/80 focus-within:ring-1 focus-within:ring-violet-500/30',
+          )}
+        >
           <input
             ref={inputRef}
             value={rawQuery}
             onChange={(e) => setRawQuery(e.target.value)}
             placeholder="Search"
-            className="flex-1 bg-transparent text-[12px] text-migratex-elements-textPrimary placeholder:text-migratex-elements-textTertiary focus:outline-none"
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            className="min-w-0 flex-1 bg-transparent text-[12px] text-migratex-elements-textPrimary placeholder:text-migratex-elements-textTertiary focus:outline-none"
           />
+          <div className="ml-auto flex items-center gap-0.5">
+            <ModifierToggle on={caseSensitive} onClick={() => setCaseSensitive((v) => !v)} title="Match case (Aa)">
+              <CaseSensitive className="size-3" />
+            </ModifierToggle>
+            <ModifierToggle on={wholeWord} onClick={() => setWholeWord((v) => !v)} title="Match whole word">
+              <WholeWord className="size-3" />
+            </ModifierToggle>
+            <ModifierToggle on={useRegex} onClick={() => setUseRegex((v) => !v)} title="Use regular expression (.*)">
+              <Regex className="size-3" />
+            </ModifierToggle>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Toggle on={caseSensitive} onClick={() => setCaseSensitive((v) => !v)} title="Match case (Aa)">
-            <CaseSensitive className="size-3" />
-          </Toggle>
-          <Toggle on={useRegex} onClick={() => setUseRegex((v) => !v)} title="Use regular expression (.*)">
-            <Regex className="size-3" />
-          </Toggle>
-          {query && (
-            <span className="ml-auto text-[10px] text-migratex-elements-textTertiary tabular-nums">
-              {results.length} {results.length === 1 ? 'result' : 'results'}
-              {results.length === MAX_RESULTS ? '+' : ''}
-            </span>
-          )}
-        </div>
+        {regexError && (
+          <p className="px-0.5 text-[10.5px] text-red-600 dark:text-red-300">{regexError}</p>
+        )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
-        {!query ? (
-          <p className="px-3 py-4 text-[11px] text-migratex-elements-textTertiary">
-            Type to search across all open project files.
-          </p>
-        ) : grouped.length === 0 ? (
-          <p className="px-3 py-4 text-[11px] text-migratex-elements-textTertiary">No results.</p>
+      {/* ── Results summary ────────────────────────────────────────────── */}
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-migratex-elements-borderColor px-3 pb-2 text-[10.5px] text-migratex-elements-textTertiary">
+        {query.trim() && !regexError ? (
+          resultCount === 0 ? (
+            <span>No results</span>
+          ) : (
+            <span>
+              <strong className="text-migratex-elements-textSecondary">{resultCount}</strong>
+              {resultCount === MAX_RESULTS ? '+' : ''}{' '}
+              {resultCount === 1 ? 'result' : 'results'} in{' '}
+              <strong className="text-migratex-elements-textSecondary">{fileCount}</strong>{' '}
+              {fileCount === 1 ? 'file' : 'files'}
+            </span>
+          )
         ) : (
-          grouped.map(([path, matches]) => {
-            const isCollapsed = collapsed.has(path);
+          <span className="opacity-0">.</span>
+        )}
+      </div>
+
+      {/* ── Results list ───────────────────────────────────────────────── */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
+        {!query.trim() ? (
+          <p className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-migratex-elements-textTertiary">
+            Type to search across every text file in the workbench.
+          </p>
+        ) : groups.length === 0 && !regexError ? (
+          <p className="px-3 py-6 text-center text-[11.5px] text-migratex-elements-textTertiary">
+            No matches for <span className="font-mono text-migratex-elements-textSecondary">"{query}"</span>
+          </p>
+        ) : (
+          groups.map(({ filePath, matches }) => {
+            const isCollapsed = collapsed.has(filePath);
             return (
-              <div key={path}>
+              <div key={filePath} className="select-none">
                 <button
                   type="button"
-                  onClick={() => toggleCollapsed(path)}
-                  className="flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[12px] font-medium text-migratex-elements-textSecondary hover:bg-migratex-elements-background-depth-3"
+                  onClick={() => toggleCollapsed(filePath)}
+                  title={filePath}
+                  className="group flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-migratex-elements-background-depth-3"
                 >
                   {isCollapsed ? (
-                    <ChevronRight className="size-3 shrink-0" />
+                    <ChevronRight className="size-3 shrink-0 text-migratex-elements-textTertiary" aria-hidden />
                   ) : (
-                    <ChevronDown className="size-3 shrink-0" />
+                    <ChevronDown className="size-3 shrink-0 text-migratex-elements-textTertiary" aria-hidden />
                   )}
-                  <span className="min-w-0 flex-1 truncate">{rel(path)}</span>
-                  <span className="shrink-0 rounded bg-migratex-elements-background-depth-3 px-1.5 py-px text-[10px] tabular-nums text-migratex-elements-textTertiary">
+                  <FileIcon className="size-3 shrink-0 text-migratex-elements-textTertiary" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="text-[12px] font-medium text-migratex-elements-textPrimary">
+                      {basename(filePath)}
+                    </span>
+                    {relativeFolder(filePath) && (
+                      <span className="ml-1.5 truncate text-[10.5px] text-migratex-elements-textTertiary">
+                        {relativeFolder(filePath)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-migratex-elements-background-depth-3 px-1.5 py-px text-[10px] font-medium tabular-nums text-migratex-elements-textSecondary">
                     {matches.length}
                   </span>
                 </button>
+
                 {!isCollapsed && (
-                  <div className="ml-3 border-l border-migratex-elements-borderColor/60 pl-2">
-                    {matches.map((m, idx) => (
-                      <button
-                        type="button"
-                        key={`${path}:${m.line}:${m.column}:${idx}`}
-                        onClick={() => openMatch(m)}
-                        className="flex w-full items-baseline gap-2 rounded px-1.5 py-0.5 text-left font-mono text-[11px] text-migratex-elements-textPrimary hover:bg-migratex-elements-background-depth-3"
-                      >
-                        <span className="shrink-0 tabular-nums text-migratex-elements-textTertiary">{m.line}</span>
-                        <span className="min-w-0 flex-1 truncate">{m.text.trim()}</span>
-                      </button>
-                    ))}
+                  <div className="mb-0.5 ml-2 border-l border-migratex-elements-borderColor/70 pl-2">
+                    {matches.map((m) => {
+                      const key = `${m.filePath}:${m.line}:${m.column}`;
+                      const isActive = activeMatch === key;
+                      return (
+                        <button
+                          type="button"
+                          key={key}
+                          onClick={() => openMatch(m)}
+                          title={`${relativePath(m.filePath)}:${m.line}:${m.column}`}
+                          className={cn(
+                            'flex w-full items-baseline gap-2 rounded px-1.5 py-[3px] text-left transition-colors',
+                            isActive
+                              ? 'bg-violet-100 dark:bg-violet-900/30'
+                              : 'hover:bg-migratex-elements-background-depth-3',
+                          )}
+                        >
+                          <span className="w-7 shrink-0 text-right font-mono text-[10.5px] tabular-nums text-migratex-elements-textTertiary">
+                            {m.line}
+                          </span>
+                          <MatchPreview text={m.text} column={m.column} length={m.length} />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -200,7 +349,9 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
   );
 });
 
-function Toggle({
+/* ── Modifier toggle button ───────────────────────────────────────────────── */
+
+function ModifierToggle({
   on,
   onClick,
   title,
@@ -215,12 +366,14 @@ function Toggle({
     <button
       type="button"
       title={title}
+      aria-label={title}
+      aria-pressed={on}
       onClick={onClick}
       className={cn(
-        'flex size-6 items-center justify-center rounded border text-[11px] transition-colors',
+        'flex size-5 items-center justify-center rounded text-[11px] transition-colors',
         on
-          ? 'border-violet-400 bg-violet-100 text-violet-700 dark:bg-violet-900/40'
-          : 'border-migratex-elements-borderColor bg-migratex-elements-background-depth-1 text-migratex-elements-textSecondary hover:border-violet-300',
+          ? 'bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/40 dark:bg-violet-500/25 dark:text-violet-200 dark:ring-violet-400/50'
+          : 'text-migratex-elements-textTertiary hover:bg-migratex-elements-background-depth-3 hover:text-migratex-elements-textSecondary',
       )}
     >
       {children}
