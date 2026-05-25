@@ -109,7 +109,7 @@ export const FindInFilesPanel = memo(function FindInFilesPanel({
   const rel = (p: string) => (p.startsWith(WORK_DIR + '/') ? p.slice(WORK_DIR.length + 1) : p);
 
   return (
-    <div className={cn('flex h-full w-72 flex-col border-r border-migratex-elements-borderColor bg-migratex-elements-background-depth-2', className)}>
+    <div className={cn('flex h-full w-full flex-col bg-migratex-elements-background-depth-2', className)}>
       <div className="flex flex-shrink-0 items-center justify-between border-b border-migratex-elements-borderColor px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-migratex-elements-textSecondary">
         <span>Search</span>
         <button

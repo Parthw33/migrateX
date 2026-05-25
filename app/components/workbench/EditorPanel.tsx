@@ -50,6 +50,8 @@ import { DiffViewer } from './monaco/DiffViewer';
 import { QuickOpen, type QuickOpenMode } from './monaco/QuickOpen';
 import { FindInFilesPanel } from './monaco/FindInFilesPanel';
 
+export type WorkbenchSidebarView = 'files' | 'search';
+
 interface EditorPanelProps {
   files?: FileMap;
   unsavedFiles?: Set<string>;
@@ -57,6 +59,15 @@ interface EditorPanelProps {
   selectedFile?: string | undefined;
   isStreaming?: boolean;
   isLoadingFiles?: boolean;
+  /**
+   * Which secondary panel the activity bar wants to show. The EditorPanel
+   * renders exactly one of these to the left of the editor — never both —
+   * so the editor's tabs and content keep the full remaining width.
+   * Defaults to 'files' when omitted.
+   */
+  sidebarView?: WorkbenchSidebarView;
+  /** Called when the EditorPanel toggles the view itself (e.g. via Cmd/Ctrl+Shift+F). */
+  onSidebarViewChange?: (view: WorkbenchSidebarView) => void;
   onEditorChange?: OnEditorChange;
   onEditorScroll?: OnEditorScroll;
   onFileSelect?: (value?: string) => void;
@@ -81,6 +92,8 @@ export const EditorPanel = memo(
     selectedFile,
     isStreaming,
     isLoadingFiles,
+    sidebarView = 'files',
+    onSidebarViewChange,
     onFileSelect,
     onEditorChange,
     onEditorScroll,
@@ -101,7 +114,13 @@ export const EditorPanel = memo(
     const [activeTerminal, setActiveTerminal] = useState(0);
     const [terminalCount, setTerminalCount] = useState(1);
     const [quickOpen, setQuickOpen] = useState<QuickOpenMode | null>(null);
-    const [findInFilesOpen, setFindInFilesOpen] = useState(false);
+
+    const setSidebarView = useCallback(
+      (next: WorkbenchSidebarView) => {
+        onSidebarViewChange?.(next);
+      },
+      [onSidebarViewChange],
+    );
 
     const activeFileSegments = useMemo(() => {
       if (!editorDocument) return undefined;
@@ -145,15 +164,16 @@ export const EditorPanel = memo(
           setQuickOpen('file');
           return;
         }
-        // Cmd/Ctrl + Shift + F → find in files
+        // Cmd/Ctrl + Shift + F → find in files (toggle the sidebar view)
         if (e.shiftKey && (e.key === 'f' || e.key === 'F')) {
           e.preventDefault();
-          setFindInFilesOpen((v) => !v);
+          setSidebarView(sidebarView === 'search' ? 'files' : 'search');
         }
       };
       window.addEventListener('keydown', onKey);
       return () => window.removeEventListener('keydown', onKey);
-    }, []);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sidebarView, setSidebarView]);
 
     /* Imperative palette commands. Kept minimal — the foundation is in place
      * so we can register more from anywhere with editor + workbench access. */
@@ -169,7 +189,7 @@ export const EditorPanel = memo(
           id: 'workbench.action.findInFiles',
           label: 'Search: Find in Files',
           shortcut: isMacPlatform() ? '⌘ ⇧ F' : 'Ctrl+Shift+F',
-          action: () => setFindInFilesOpen(true),
+          action: () => setSidebarView('search'),
         },
         {
           id: 'workbench.action.quickOpen',
@@ -258,47 +278,38 @@ export const EditorPanel = memo(
       <PanelGroup direction="vertical">
         <Panel defaultSize={showTerminal ? DEFAULT_EDITOR_SIZE : 100} minSize={20}>
           <PanelGroup direction="horizontal">
-            <Panel defaultSize={18} minSize={10} collapsible className="min-h-0">
-              <div className="flex flex-col border-r border-migratex-elements-borderColor h-full min-h-0 overflow-hidden">
-                <PanelHeader className="shrink-0 justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Folder className="size-3.5" />
-                    Files
-                  </span>
-                  <IconButton
-                    icon="i-ph:magnifying-glass"
-                    title="Search in files (Ctrl/Cmd+Shift+F)"
-                    size="md"
-                    onClick={() => setFindInFilesOpen((v) => !v)}
-                    className={findInFilesOpen ? 'text-violet-600' : undefined}
+            <Panel defaultSize={20} minSize={12} maxSize={40} collapsible className="min-h-0">
+              <div className="flex h-full min-h-0 flex-col overflow-hidden border-r border-migratex-elements-borderColor">
+                {sidebarView === 'files' ? (
+                  <>
+                    <PanelHeader className="shrink-0">
+                      <Folder className="size-3.5" />
+                      Files
+                    </PanelHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                      <FileTree
+                        className="min-h-min pb-2"
+                        files={files}
+                        hideRoot
+                        unsavedFiles={unsavedFiles}
+                        rootFolder={WORK_DIR}
+                        selectedFile={selectedFile}
+                        onFileSelect={onFileSelect}
+                        isLoading={isLoadingFiles}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <FindInFilesPanel
+                    onClose={() => setSidebarView('files')}
+                    className="h-full w-full border-r-0"
                   />
-                </PanelHeader>
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-                  <FileTree
-                    className="min-h-min pb-2"
-                    files={files}
-                    hideRoot
-                    unsavedFiles={unsavedFiles}
-                    rootFolder={WORK_DIR}
-                    selectedFile={selectedFile}
-                    onFileSelect={onFileSelect}
-                    isLoading={isLoadingFiles}
-                  />
-                </div>
+                )}
               </div>
             </Panel>
             <PanelResizeHandle />
 
-            {findInFilesOpen && (
-              <>
-                <Panel defaultSize={20} minSize={14} maxSize={40} className="min-h-0">
-                  <FindInFilesPanel onClose={() => setFindInFilesOpen(false)} className="h-full w-full" />
-                </Panel>
-                <PanelResizeHandle />
-              </>
-            )}
-
-            <Panel className="flex flex-col" defaultSize={findInFilesOpen ? 62 : 82} minSize={20}>
+            <Panel className="flex flex-col" defaultSize={80} minSize={20}>
               <FileTabs />
               <PanelHeader className="overflow-x-auto">
                 {activeFileSegments?.length && (

@@ -15,7 +15,7 @@ import {
   type OnChangeCallback as OnEditorChange,
   type OnScrollCallback as OnEditorScroll,
 } from '~/components/editor/codemirror/CodeMirrorEditor';
-import { EditorPanel } from '~/components/workbench/EditorPanel';
+import { EditorPanel, type WorkbenchSidebarView } from '~/components/workbench/EditorPanel';
 import { useOnDemandFileContent } from '~/lib/hooks/useOnDemandFileContent';
 import { migrationStore } from '~/lib/stores/migration';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -125,6 +125,7 @@ export const WorkbenchIDEView = memo(function WorkbenchIDEView({
   const { onFileSelect: onDemandFileSelect } = useOnDemandFileContent({ appToken, jobId: scrapeJobId });
 
   const [cursorPos] = useState('Ln 1, Col 1');
+  const [sidebarView, setSidebarView] = useState<WorkbenchSidebarView>('files');
 
   // Note: `workbenchStore.ingestWebsiteFiles` already calls `setDocuments`
   // whenever the file count changes, so a per-`files` useEffect here would
@@ -173,12 +174,12 @@ export const WorkbenchIDEView = memo(function WorkbenchIDEView({
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Activity bar */}
         <div className="ide-activity-bar flex flex-col items-center pt-2 gap-1 w-10 flex-shrink-0 border-r">
-          <ActivityIcon title="Explorer" active>
+          <ActivityIcon title="Explorer" active={sidebarView === 'files'} onClick={() => setSidebarView('files')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z" />
             </svg>
           </ActivityIcon>
-          <ActivityIcon title="Search">
+          <ActivityIcon title="Search" active={sidebarView === 'search'} onClick={() => setSidebarView('search')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
@@ -207,6 +208,8 @@ export const WorkbenchIDEView = memo(function WorkbenchIDEView({
                 selectedFile={selectedFile}
                 files={files}
                 unsavedFiles={unsavedFiles}
+                sidebarView={sidebarView}
+                onSidebarViewChange={setSidebarView}
                 onFileSelect={onFileSelect}
                 onEditorScroll={onEditorScroll}
                 onEditorChange={onEditorChange}
